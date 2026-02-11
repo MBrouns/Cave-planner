@@ -146,7 +146,7 @@
             >
               <td class="col-drag drag-handle" title="Drag to reorder">⠿</td>
               <td class="col-num">{i + 1}</td>
-              <td class="col-type">
+              <td class="col-type" data-label="Type">
                 <select
                   value={section.type}
                   onchange={(e: Event) => {
@@ -163,7 +163,7 @@
                   {/each}
                 </select>
               </td>
-              <td class="col-depth">
+              <td class="col-depth" data-label="Depth">
                 {#if isSwim(section.type)}
                   <input
                     type="number"
@@ -177,11 +177,12 @@
                         Number((e.currentTarget as HTMLInputElement).value)
                       )}
                   />
+                  <span class="unit">m</span>
                 {:else}
                   <span class="dim">&mdash;</span>
                 {/if}
               </td>
-              <td class="col-dist">
+              <td class="col-dist" data-label="Dist">
                 {#if isSwim(section.type)}
                   <input
                     type="number"
@@ -195,31 +196,32 @@
                         Number((e.currentTarget as HTMLInputElement).value)
                       )}
                   />
+                  <span class="unit">m</span>
                 {:else}
                   <span class="dim">&mdash;</span>
                 {/if}
               </td>
-              <td class="col-time">
+              <td class="col-time" data-label="Time">
                 {#if result}
                   {formatTime(result.time)}
                 {/if}
               </td>
-              <td class="col-gas">
+              <td class="col-gas" data-label="Gas">
                 {#if result}
-                  {formatNum(result.gasConsumed, 0)}
+                  {formatNum(result.gasConsumed, 0)} L
                 {/if}
               </td>
-              <td class="col-run-time">
+              <td class="col-run-time" data-label="Run">
                 {#if result}
                   {formatTime(result.runningTime)}
                 {/if}
               </td>
-              <td class="col-avg-depth">
+              <td class="col-avg-depth" data-label="Avg">
                 {#if result}
                   {formatNum(result.runningAvgDepth, 1)}m
                 {/if}
               </td>
-              <td class="col-backgas">
+              <td class="col-backgas" data-label="Back Gas">
                 {#if result}
                   <span class:low-gas={result.remainingBackGasBar < 50}>
                     {formatNum(result.remainingBackGasBar, 0)} bar
@@ -227,7 +229,7 @@
                   <span class="sub">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
                 {/if}
               </td>
-              <td class="col-stages">
+              <td class="col-stages" data-label="Stages">
                 {#if result}
                   {#each activeStages(result.stageStates) as st}
                     <span class="stage-pill">
@@ -239,7 +241,7 @@
                   {/if}
                 {/if}
               </td>
-              <td class="col-notes">
+              <td class="col-notes" data-label="">
                 {#if result}
                   {#each result.stageDroppedIds as droppedId}
                     {@const dropped = result.stageStates.find(s => s.id === droppedId)}
@@ -452,10 +454,157 @@
     background: rgba(229, 115, 115, 0.15);
   }
 
+  .unit {
+    color: #777;
+    font-size: 0.72rem;
+    margin-left: 0.15rem;
+  }
+
   .empty-hint {
     color: #666;
     font-size: 0.85rem;
     text-align: center;
     padding: 2rem 0;
+  }
+
+  @media (max-width: 900px) {
+    thead {
+      display: none;
+    }
+
+    tbody tr {
+      display: grid;
+      grid-template-columns: auto 1fr 1fr auto;
+      gap: 0 0.5rem;
+      padding: 0.6rem 0.5rem;
+      border-bottom: 1px solid #333;
+      align-items: center;
+    }
+
+    /* Row 1: drag | #num Type ▾ | [remove] */
+    td.col-drag {
+      grid-row: 1;
+      grid-column: 1;
+      width: auto;
+    }
+
+    td.col-num {
+      grid-row: 1;
+      grid-column: 2;
+      width: auto;
+      text-align: left;
+      display: none;
+    }
+
+    td.col-type {
+      grid-row: 1;
+      grid-column: 2 / 4;
+    }
+
+    td.col-remove {
+      grid-row: 1;
+      grid-column: 4;
+      width: auto;
+      text-align: right;
+    }
+
+    /* Row 2: depth | dist (swim inputs) */
+    td.col-depth,
+    td.col-dist {
+      grid-row: 2;
+      width: auto;
+    }
+
+    td.col-depth {
+      grid-column: 2;
+    }
+
+    td.col-dist {
+      grid-column: 3;
+    }
+
+    /* Row 3: computed values as a flowing grid */
+    td.col-time,
+    td.col-gas,
+    td.col-run-time,
+    td.col-avg-depth {
+      width: auto;
+      min-width: 0;
+    }
+
+    td.col-time {
+      grid-row: 3;
+      grid-column: 1 / 3;
+    }
+
+    td.col-gas {
+      grid-row: 3;
+      grid-column: 3 / 5;
+    }
+
+    td.col-run-time {
+      grid-row: 4;
+      grid-column: 1 / 3;
+    }
+
+    td.col-avg-depth {
+      grid-row: 4;
+      grid-column: 3 / 5;
+    }
+
+    /* Row 5: back gas */
+    td.col-backgas {
+      grid-row: 5;
+      grid-column: 1 / 5;
+      width: auto;
+    }
+
+    /* Row 6: stages */
+    td.col-stages {
+      grid-row: 6;
+      grid-column: 1 / 5;
+      min-width: 0;
+    }
+
+    /* Row 7: notes (badges) */
+    td.col-notes {
+      grid-row: 7;
+      grid-column: 1 / 5;
+      min-width: 0;
+    }
+
+    /* Show data-label as inline prefix on mobile */
+    td[data-label]::before {
+      content: attr(data-label);
+      color: #888;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      margin-right: 0.4rem;
+    }
+
+    td[data-label=""]::before {
+      display: none;
+    }
+
+    /* Hide dash placeholders on non-swim rows */
+    td.col-depth .dim,
+    td.col-dist .dim {
+      display: none;
+    }
+
+    /* Adjust input widths for mobile */
+    select,
+    input[type='number'] {
+      width: auto;
+      min-width: 0;
+    }
+
+    td.col-type select {
+      width: 100%;
+    }
+
+    input[type='number'] {
+      width: 4rem;
+    }
   }
 </style>
