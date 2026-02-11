@@ -33,6 +33,10 @@
     sections = sections.filter((s) => s.id !== id);
   }
 
+  function clearAll() {
+    sections = [];
+  }
+
   function updateSection(id: string, field: keyof Section, value: string | number | boolean) {
     sections = sections.map((s) =>
       s.id === id ? { ...s, [field]: value } : s
@@ -133,6 +137,9 @@
     <button onclick={() => addSection('jump-left')}>+ Jump Left</button>
     <button onclick={() => addSection('jump-right')}>+ Jump Right</button>
     <button onclick={() => addSection('stage-drop')}>+ Stage</button>
+    {#if sections.length > 0}
+      <button class="btn-clear" onclick={clearAll}>Clear All</button>
+    {/if}
   </div>
 
   {#if sections.length > 0}
@@ -292,6 +299,14 @@
                 {#if result?.turnWarning}
                   <span class="badge turn">TURN</span>
                 {/if}
+                <input
+                  type="text"
+                  class="note-input"
+                  placeholder="Note"
+                  value={section.note ?? ''}
+                  oninput={(e: Event) =>
+                    updateSection(section.id, 'note', (e.currentTarget as HTMLInputElement).value)}
+                />
               </td>
               <td class="col-remove">
                 <button
@@ -434,7 +449,7 @@
   .col-avg-depth { width: 5rem; }
   .col-backgas { width: 7rem; }
   .col-stages { min-width: 8rem; }
-  .col-notes { min-width: 5rem; }
+  .col-notes { min-width: 7rem; }
   .col-remove { width: 2rem; }
 
   input[type='number'] {
@@ -446,6 +461,48 @@
   .stage-picker {
     margin-top: 0.2rem;
     font-size: 0.75rem;
+  }
+
+  .note-input {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: #ccc;
+    padding: 0.15rem 0.3rem;
+    font-size: 0.75rem;
+    width: 100%;
+    min-width: 4rem;
+  }
+
+  .note-input:hover {
+    border-color: #333;
+  }
+
+  .note-input:focus {
+    background: #16213e;
+    border-color: #4fc3f7;
+    outline: none;
+    color: #e0e0e0;
+  }
+
+  .note-input::placeholder {
+    color: #444;
+  }
+
+  .btn-clear {
+    background: #16213e;
+    border: 1px solid #444;
+    color: #e57373;
+    padding: 0.35rem 0.7rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: auto;
+  }
+
+  .btn-clear:hover {
+    background: rgba(229, 115, 115, 0.1);
+    border-color: #e57373;
   }
 
   .inherited {
