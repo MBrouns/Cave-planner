@@ -7,9 +7,14 @@
     type SectionType,
     type SectionResult,
     type StageState,
+    type StageEntry,
   } from './types';
 
-  let { sections = $bindable(), results }: { sections: Section[]; results: SectionResult[] } = $props();
+  let { sections = $bindable(), results, stages }: {
+    sections: Section[];
+    results: SectionResult[];
+    stages: StageEntry[];
+  } = $props();
 
   let dragIndex: number | null = $state(null);
   let dragOverIndex: number | null = $state(null);
@@ -28,7 +33,7 @@
     sections = sections.filter((s) => s.id !== id);
   }
 
-  function updateSection(id: string, field: keyof Section, value: string | number) {
+  function updateSection(id: string, field: keyof Section, value: string | number | boolean) {
     sections = sections.map((s) =>
       s.id === id ? { ...s, [field]: value } : s
     );
@@ -90,6 +95,11 @@
     return tank ? tank.label : state.tankType;
   }
 
+  function stageLabel(entry: StageEntry): string {
+    const tank = STAGE_TANK_TYPES.find(t => t.name === entry.tankType);
+    return tank ? tank.label : entry.tankType;
+  }
+
   function activeStages(states: StageState[]): StageState[] {
     return states.filter(s => !s.dropped);
   }
@@ -98,43 +108,19 @@
     return type === 'swim';
   }
 
-  function isStageSection(type: SectionType): boolean {
-    return type === 'stage-drop' || type === 'stage-pickup';
-  }
-
-  function stageNameFromId(stageId: string | undefined, result: SectionResult | undefined): string {
-    if (!stageId || !result) return '';
-    const state = result.stageStates.find(s => s.id === stageId);
-    return state ? stageName(state) : stageId;
-  }
-
   function addReturnSections() {
-    const reversed = [...sections].reverse().map((s): Section => {
-      if (s.type === 'stage-drop') {
-        return {
-          id: generateId(),
-          type: 'stage-pickup',
-          avgDepth: 0,
-          distance: 0,
-          stageId: s.stageId,
-          wayBack: true,
-        };
-      }
-      return {
-        id: generateId(),
-        type: s.type,
-        avgDepth: s.avgDepth,
-        distance: s.distance,
-        wayBack: true,
-      };
-    });
+    const reversed = [...sections].reverse().map((s): Section => ({
+      id: generateId(),
+      type: s.type,
+      avgDepth: s.avgDepth,
+      distance: s.distance,
+      stageId: s.stageId,
+      wayBack: true,
+    }));
     sections = [...sections, ...reversed];
   }
 
-  // Only user-addable section types (exclude auto-generated stage-drop/pickup)
-  const editableSectionTypes: [SectionType, string][] = (
-    Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][]
-  ).filter(([val]) => val !== 'stage-drop' && val !== 'stage-pickup');
+  const sectionTypeEntries = Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][];
 </script>
 
 <div class="section-list">
@@ -146,6 +132,7 @@
     <button onclick={() => addSection('t-right')}>+ T Right</button>
     <button onclick={() => addSection('jump-left')}>+ Jump Left</button>
     <button onclick={() => addSection('jump-right')}>+ Jump Right</button>
+    <button onclick={() => addSection('stage-drop')}>+ Stage</button>
   </div>
 
   {#if sections.length > 0}
@@ -164,6 +151,7 @@
             <th class="col-avg-depth">Avg Depth</th>
             <th class="col-backgas">Back Gas</th>
             <th class="col-stages">Stages</th>
+            <th class="col-wayback">Way Back</th>
             <th class="col-notes">Notes</th>
             <th class="col-remove"></th>
           </tr>
@@ -183,25 +171,31 @@
               <td class="col-drag drag-handle" title="Drag to reorder">⠿</td>
               <td class="col-num">{i + 1}</td>
               <td class="col-type" data-label="Type">
-                {#if isStageSection(section.type)}
-                  <span class="stage-section-label">
-                    {SECTION_TYPE_LABELS[section.type]}
-                    <span class="stage-section-name">{stageNameFromId(section.stageId, result)}</span>
-                  </span>
-                {:else}
+                <select
+                  value={section.type}
+                  onchange={(e: Event) => {
+                    const newType = (e.currentTarget as HTMLSelectElement).value as SectionType;
+                    updateSection(section.id, 'type', newType);
+                    if (newType !== 'swim') {
+                      updateSection(section.id, 'avgDepth', 0);
+                      updateSection(section.id, 'distance', 0);
+                    }
+                  }}
+                >
+                  {#each sectionTypeEntries as [val, label]}
+                    <option value={val}>{label}</option>
+                  {/each}
+                </select>
+                {#if section.type === 'stage-drop'}
                   <select
-                    value={section.type}
-                    onchange={(e: Event) => {
-                      const newType = (e.currentTarget as HTMLSelectElement).value as SectionType;
-                      updateSection(section.id, 'type', newType);
-                      if (newType !== 'swim') {
-                        updateSection(section.id, 'avgDepth', 0);
-                        updateSection(section.id, 'distance', 0);
-                      }
-                    }}
+                    class="stage-picker"
+                    value={section.stageId ?? ''}
+                    onchange={(e: Event) =>
+                      updateSection(section.id, 'stageId', (e.currentTarget as HTMLSelectElement).value)}
                   >
-                    {#each editableSectionTypes as [val, label]}
-                      <option value={val}>{label}</option>
+                    <option value="" disabled>Select stage</option>
+                    {#each stages as stage}
+                      <option value={stage.id}>{stageLabel(stage)}</option>
                     {/each}
                   </select>
                 {/if}
@@ -286,10 +280,15 @@
                   {/if}
                 {/if}
               </td>
+              <td class="col-wayback">
+                <input
+                  type="checkbox"
+                  checked={section.wayBack ?? false}
+                  onchange={(e: Event) =>
+                    updateSection(section.id, 'wayBack', (e.currentTarget as HTMLInputElement).checked)}
+                />
+              </td>
               <td class="col-notes" data-label="">
-                {#if section.wayBack}
-                  <span class="badge way-back">WAY BACK</span>
-                {/if}
                 {#if result?.turnWarning}
                   <span class="badge turn">TURN</span>
                 {/if}
@@ -434,7 +433,8 @@
   .col-avg-depth { width: 5rem; }
   .col-backgas { width: 7rem; }
   .col-stages { min-width: 8rem; }
-  .col-notes { min-width: 7rem; }
+  .col-wayback { width: 4rem; text-align: center; }
+  .col-notes { min-width: 5rem; }
   .col-remove { width: 2rem; }
 
   input[type='number'] {
@@ -443,17 +443,9 @@
 
   .dim { color: #555; }
 
-  .stage-section-label {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #ffb74d;
-    white-space: nowrap;
-  }
-
-  .stage-section-name {
-    font-weight: 400;
-    color: #aaa;
-    margin-left: 0.3rem;
+  .stage-picker {
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
   }
 
   .inherited {
@@ -495,12 +487,6 @@
     background: rgba(244, 67, 54, 0.2);
     color: #ef5350;
     border: 1px solid #f44336;
-  }
-
-  .badge.way-back {
-    background: rgba(79, 195, 247, 0.15);
-    color: #4fc3f7;
-    border: 1px solid #4fc3f7;
   }
 
   .btn-remove {
@@ -646,10 +632,17 @@
       min-width: 0;
     }
 
-    /* Row 7: notes (badges) */
+    /* Row 7: way back + notes */
+    td.col-wayback {
+      grid-row: 7;
+      grid-column: 1 / 3;
+      width: auto;
+      text-align: left;
+    }
+
     td.col-notes {
       grid-row: 7;
-      grid-column: 1 / 5;
+      grid-column: 3 / 5;
       min-width: 0;
     }
 
