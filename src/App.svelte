@@ -14,9 +14,8 @@
     scr: 20,
     swimSpeed: 15,
     bottomGasType: '2x80',
-    bottomGasFillPressure: 200,
+    bottomGasFillPressure: 220,
     stages: [],
-    reserveStageInBackGas: true,
   });
 
   let sections: Section[] = $state(loadSections() ?? []);

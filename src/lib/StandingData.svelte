@@ -13,7 +13,8 @@
     const entry: StageEntry = {
       id: generateId(),
       tankType: 'alu80',
-      fillPressure: 200,
+      fillPressure: 210,
+      reserveInBackGas: true,
     };
     data = { ...data, stages: [...data.stages, entry] };
   }
@@ -22,7 +23,7 @@
     data = { ...data, stages: data.stages.filter((s) => s.id !== id) };
   }
 
-  function updateStage(id: string, field: keyof StageEntry, value: string | number) {
+  function updateStage(id: string, field: keyof StageEntry, value: string | number | boolean) {
     data = {
       ...data,
       stages: data.stages.map((s) =>
@@ -69,13 +70,6 @@
   <div class="stages-section">
     <div class="stages-header">
       <h3>Stages</h3>
-      <label class="checkbox-label">
-        <input
-          type="checkbox"
-          bind:checked={data.reserveStageInBackGas}
-        />
-        Reserve ½ stage gas in back gas
-      </label>
     </div>
 
     {#if data.stages.length > 0}
@@ -84,6 +78,7 @@
           <tr>
             <th>Tank</th>
             <th>Fill (bar)</th>
+            <th>Reserve</th>
             <th></th>
           </tr>
         </thead>
@@ -113,6 +108,14 @@
                       'fillPressure',
                       Number((e.currentTarget as HTMLInputElement).value)
                     )}
+                />
+              </td>
+              <td class="center">
+                <input
+                  type="checkbox"
+                  checked={stage.reserveInBackGas}
+                  onchange={(e: Event) =>
+                    updateStage(stage.id, 'reserveInBackGas', (e.currentTarget as HTMLInputElement).checked)}
                 />
               </td>
               <td>
@@ -196,19 +199,6 @@
     gap: 0.5rem;
   }
 
-  .checkbox-label {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    color: #aaa;
-    cursor: pointer;
-  }
-
-  .checkbox-label input[type='checkbox'] {
-    accent-color: #4fc3f7;
-  }
-
   .stages-table {
     width: 100%;
     border-collapse: collapse;
@@ -225,6 +215,14 @@
 
   .stages-table td {
     padding: 0.3rem 0.5rem;
+  }
+
+  .stages-table td.center {
+    text-align: center;
+  }
+
+  .stages-table input[type='checkbox'] {
+    accent-color: #4fc3f7;
   }
 
   .stages-table select,
