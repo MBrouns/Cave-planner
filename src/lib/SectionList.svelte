@@ -98,6 +98,16 @@
     return type === 'swim';
   }
 
+  function addReturnSections() {
+    const reversed = [...sections].reverse().map((s) => ({
+      id: generateId(),
+      type: s.type,
+      avgDepth: s.avgDepth,
+      distance: s.distance,
+    }));
+    sections = [...sections, ...reversed];
+  }
+
   const sectionTypeEntries = Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][];
 </script>
 
@@ -178,8 +188,8 @@
                       )}
                   />
                   <span class="unit">m</span>
-                {:else}
-                  <span class="dim">&mdash;</span>
+                {:else if result}
+                  <span class="inherited">{formatNum(result.depth, 0)}m</span>
                 {/if}
               </td>
               <td class="col-dist" data-label="Dist">
@@ -202,8 +212,10 @@
                 {/if}
               </td>
               <td class="col-time" data-label="Time">
-                {#if result}
+                {#if result && isSwim(section.type)}
                   {formatTime(result.time)}
+                {:else if !isSwim(section.type)}
+                  <span class="dim">&mdash;</span>
                 {/if}
               </td>
               <td class="col-gas" data-label="Gas">
@@ -266,6 +278,10 @@
         </tbody>
       </table>
     </div>
+
+    <button class="btn-return" onclick={addReturnSections}>
+      Add the sections on the way back
+    </button>
   {:else}
     <p class="empty-hint">Add sections to start planning your dive.</p>
   {/if}
@@ -399,6 +415,12 @@
 
   .dim { color: #555; }
 
+  .inherited {
+    color: #888;
+    font-style: italic;
+    font-size: 0.78rem;
+  }
+
   .sub {
     color: #777;
     font-size: 0.72rem;
@@ -458,6 +480,23 @@
     color: #777;
     font-size: 0.72rem;
     margin-left: 0.15rem;
+  }
+
+  .btn-return {
+    display: block;
+    margin: 1rem auto 0;
+    background: #16213e;
+    border: 1px solid #444;
+    color: #4fc3f7;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .btn-return:hover {
+    background: #1a2744;
+    border-color: #4fc3f7;
   }
 
   .empty-hint {
@@ -587,7 +626,6 @@
     }
 
     /* Hide dash placeholders on non-swim rows */
-    td.col-depth .dim,
     td.col-dist .dim {
       display: none;
     }
