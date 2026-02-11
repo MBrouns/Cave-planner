@@ -38,6 +38,7 @@ export interface Section {
   distance: number; // meters (used for swim, 0 for nav)
   wayBack?: boolean;
   stageId?: string; // references StageEntry.id for stage-drop/stage-pickup
+  note?: string;
 }
 
 export interface StageState {
