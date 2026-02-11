@@ -98,18 +98,43 @@
     return type === 'swim';
   }
 
+  function isStageSection(type: SectionType): boolean {
+    return type === 'stage-drop' || type === 'stage-pickup';
+  }
+
+  function stageNameFromId(stageId: string | undefined, result: SectionResult | undefined): string {
+    if (!stageId || !result) return '';
+    const state = result.stageStates.find(s => s.id === stageId);
+    return state ? stageName(state) : stageId;
+  }
+
   function addReturnSections() {
-    const reversed = [...sections].reverse().map((s) => ({
-      id: generateId(),
-      type: s.type,
-      avgDepth: s.avgDepth,
-      distance: s.distance,
-      wayBack: true,
-    }));
+    const reversed = [...sections].reverse().map((s): Section => {
+      if (s.type === 'stage-drop') {
+        return {
+          id: generateId(),
+          type: 'stage-pickup',
+          avgDepth: 0,
+          distance: 0,
+          stageId: s.stageId,
+          wayBack: true,
+        };
+      }
+      return {
+        id: generateId(),
+        type: s.type,
+        avgDepth: s.avgDepth,
+        distance: s.distance,
+        wayBack: true,
+      };
+    });
     sections = [...sections, ...reversed];
   }
 
-  const sectionTypeEntries = Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][];
+  // Only user-addable section types (exclude auto-generated stage-drop/pickup)
+  const editableSectionTypes: [SectionType, string][] = (
+    Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][]
+  ).filter(([val]) => val !== 'stage-drop' && val !== 'stage-pickup');
 </script>
 
 <div class="section-list">
@@ -158,21 +183,28 @@
               <td class="col-drag drag-handle" title="Drag to reorder">⠿</td>
               <td class="col-num">{i + 1}</td>
               <td class="col-type" data-label="Type">
-                <select
-                  value={section.type}
-                  onchange={(e: Event) => {
-                    const newType = (e.currentTarget as HTMLSelectElement).value as SectionType;
-                    updateSection(section.id, 'type', newType);
-                    if (newType !== 'swim') {
-                      updateSection(section.id, 'avgDepth', 0);
-                      updateSection(section.id, 'distance', 0);
-                    }
-                  }}
-                >
-                  {#each sectionTypeEntries as [val, label]}
-                    <option value={val}>{label}</option>
-                  {/each}
-                </select>
+                {#if isStageSection(section.type)}
+                  <span class="stage-section-label">
+                    {SECTION_TYPE_LABELS[section.type]}
+                    <span class="stage-section-name">{stageNameFromId(section.stageId, result)}</span>
+                  </span>
+                {:else}
+                  <select
+                    value={section.type}
+                    onchange={(e: Event) => {
+                      const newType = (e.currentTarget as HTMLSelectElement).value as SectionType;
+                      updateSection(section.id, 'type', newType);
+                      if (newType !== 'swim') {
+                        updateSection(section.id, 'avgDepth', 0);
+                        updateSection(section.id, 'distance', 0);
+                      }
+                    }}
+                  >
+                    {#each editableSectionTypes as [val, label]}
+                      <option value={val}>{label}</option>
+                    {/each}
+                  </select>
+                {/if}
               </td>
               <td class="col-depth" data-label="Depth">
                 {#if isSwim(section.type)}
@@ -258,16 +290,8 @@
                 {#if section.wayBack}
                   <span class="badge way-back">WAY BACK</span>
                 {/if}
-                {#if result}
-                  {#each result.stageDroppedIds as droppedId}
-                    {@const dropped = result.stageStates.find(s => s.id === droppedId)}
-                    {#if dropped}
-                      <span class="badge drop">DROP {stageName(dropped)}</span>
-                    {/if}
-                  {/each}
-                  {#if result.turnWarning}
-                    <span class="badge turn">TURN</span>
-                  {/if}
+                {#if result?.turnWarning}
+                  <span class="badge turn">TURN</span>
                 {/if}
               </td>
               <td class="col-remove">
@@ -419,6 +443,19 @@
 
   .dim { color: #555; }
 
+  .stage-section-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #ffb74d;
+    white-space: nowrap;
+  }
+
+  .stage-section-name {
+    font-weight: 400;
+    color: #aaa;
+    margin-left: 0.3rem;
+  }
+
   .inherited {
     color: #888;
     font-style: italic;
@@ -452,12 +489,6 @@
     font-weight: 600;
     margin: 0.1rem;
     white-space: nowrap;
-  }
-
-  .badge.drop {
-    background: rgba(255, 152, 0, 0.2);
-    color: #ffb74d;
-    border: 1px solid #ff9800;
   }
 
   .badge.turn {
