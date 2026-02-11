@@ -9,7 +9,7 @@
     saveSections,
   } from './lib/storage';
   import type { StandingData, Section, SectionResult, DiveCalculation } from './lib/types';
-  import { generateId } from './lib/types';
+  import { generateId, STAGE_TANK_TYPES } from './lib/types';
 
   let standingData: StandingData = $state(loadStandingData() ?? {
     scr: 20,
@@ -79,6 +79,10 @@
   function formatNum(n: number, d: number = 0): string {
     return n.toFixed(d);
   }
+
+  function stageLabel(tankType: string): string {
+    return STAGE_TANK_TYPES.find(t => t.name === tankType)?.label ?? tankType;
+  }
 </script>
 
 <main>
@@ -122,6 +126,12 @@
               )} bar
             </span>
           </div>
+          {#each standingData.stages as stage}
+            <div class="summary-item">
+              <span class="summary-label">{stageLabel(stage.tankType)} drop</span>
+              <span class="summary-value">{formatNum(stage.fillPressure / 2 + 15, 0)} bar</span>
+            </div>
+          {/each}
         </div>
       </div>
     </aside>
