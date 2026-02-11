@@ -9,7 +9,7 @@
     saveSections,
   } from './lib/storage';
   import type { StandingData, Section, SectionResult, DiveCalculation } from './lib/types';
-  import { generateId } from './lib/types';
+  import { generateId, STAGE_TANK_TYPES } from './lib/types';
 
   let standingData: StandingData = $state(loadStandingData() ?? {
     scr: 20,
@@ -79,6 +79,14 @@
   function formatNum(n: number, d: number = 0): string {
     return n.toFixed(d);
   }
+
+  function ceilTo10(n: number): number {
+    return Math.ceil(n / 10) * 10;
+  }
+
+  function stageLabel(tankType: string): string {
+    return STAGE_TANK_TYPES.find(t => t.name === tankType)?.label ?? tankType;
+  }
 </script>
 
 <main>
@@ -115,13 +123,19 @@
             <span class="summary-label">Turn Pressure</span>
             <span class="summary-value highlight">
               {formatNum(
-                calculation.bottomGasVolume > 0
+                ceilTo10(calculation.bottomGasVolume > 0
                   ? (calculation.totalBackGas - calculation.usableBackGas) / calculation.bottomGasVolume
-                  : 0,
+                  : 0),
                 0
               )} bar
             </span>
           </div>
+          {#each standingData.stages as stage}
+            <div class="summary-item">
+              <span class="summary-label">{stageLabel(stage.tankType)} drop</span>
+              <span class="summary-value">{formatNum(ceilTo10(stage.fillPressure / 2 + 15), 0)} bar</span>
+            </div>
+          {/each}
         </div>
       </div>
     </aside>

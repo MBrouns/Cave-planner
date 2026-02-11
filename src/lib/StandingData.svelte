@@ -39,12 +39,14 @@
   <div class="form-grid">
     <label>
       SCR (L/min/ATA)
-      <input type="number" bind:value={data.scr} min="0" step="1" />
+      <input type="number" value={data.scr} min="0" step="1"
+        onchange={(e: Event) => { data = { ...data, scr: Number((e.currentTarget as HTMLInputElement).value) }; }} />
     </label>
 
     <label>
       Swim Speed (m/min)
-      <input type="number" bind:value={data.swimSpeed} min="0" step="1" />
+      <input type="number" value={data.swimSpeed} min="0" step="1"
+        onchange={(e: Event) => { data = { ...data, swimSpeed: Number((e.currentTarget as HTMLInputElement).value) }; }} />
     </label>
 
     <label>
@@ -60,9 +62,10 @@
       Fill Pressure (bar)
       <input
         type="number"
-        bind:value={data.bottomGasFillPressure}
+        value={data.bottomGasFillPressure}
         min="0"
         step="10"
+        onchange={(e: Event) => { data = { ...data, bottomGasFillPressure: Number((e.currentTarget as HTMLInputElement).value) }; }}
       />
     </label>
   </div>
@@ -102,7 +105,7 @@
                   value={stage.fillPressure}
                   min="0"
                   step="10"
-                  oninput={(e: Event) =>
+                  onchange={(e: Event) =>
                     updateStage(
                       stage.id,
                       'fillPressure',
