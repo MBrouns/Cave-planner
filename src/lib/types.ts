@@ -29,7 +29,7 @@ export interface StandingData {
   stages: StageEntry[];
 }
 
-export type SectionType = 'swim' | 't-left' | 't-right' | 'jump-left' | 'jump-right' | 'stage-drop' | 'stage-pickup';
+export type SectionType = 'swim' | 't-left' | 't-right' | 'jump-left' | 'jump-right' | 'stage-drop';
 
 export interface Section {
   id: string;
@@ -74,7 +74,7 @@ export interface DiveCalculation {
   effectiveBackGas: number;
   usableBackGas: number;
   bottomGasVolume: number;
-  pendingDropInserts: { afterSectionId: string; stageId: string }[];
+  pendingDropInserts: { afterSectionId: string; stageId: string; splitAtDistance?: number }[];
 }
 
 export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
@@ -83,8 +83,7 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   't-right': 'T Right',
   'jump-left': 'Jump Left',
   'jump-right': 'Jump Right',
-  'stage-drop': 'Stage Drop',
-  'stage-pickup': 'Stage Pickup',
+  'stage-drop': 'Stage',
 };
 
 export function getBottomGasVolume(type: string): number {

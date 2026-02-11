@@ -34,25 +34,45 @@
 
   // Auto-insert stage-drop sections when the calculation detects a stage
   // reaching drop pressure without an explicit stage-drop section.
+  // Processes one insert per cycle; the reactive loop handles the rest.
   $effect(() => {
     const inserts = calculation.pendingDropInserts;
     if (inserts.length === 0) return;
 
+    const insert = inserts[0];
     const updated = [...sections];
-    let offset = 0;
-    for (const insert of inserts) {
-      const idx = updated.findIndex((s) => s.id === insert.afterSectionId);
-      if (idx === -1) continue;
-      const dropSection: Section = {
+    const idx = updated.findIndex((s) => s.id === insert.afterSectionId);
+    if (idx === -1) return;
+
+    const target = updated[idx];
+    const dropSection: Section = {
+      id: generateId(),
+      type: 'stage-drop',
+      avgDepth: 0,
+      distance: 0,
+      stageId: insert.stageId,
+    };
+
+    if (
+      insert.splitAtDistance !== undefined &&
+      insert.splitAtDistance > 0 &&
+      insert.splitAtDistance < target.distance &&
+      target.type === 'swim'
+    ) {
+      // Split the swim: shorten original, insert drop + remainder
+      const remainder: Section = {
         id: generateId(),
-        type: 'stage-drop',
-        avgDepth: 0,
-        distance: 0,
-        stageId: insert.stageId,
+        type: 'swim',
+        avgDepth: target.avgDepth,
+        distance: target.distance - insert.splitAtDistance,
+        wayBack: target.wayBack,
       };
-      updated.splice(idx + 1 + offset, 0, dropSection);
-      offset++;
+      updated[idx] = { ...target, distance: insert.splitAtDistance };
+      updated.splice(idx + 1, 0, dropSection, remainder);
+    } else {
+      updated.splice(idx + 1, 0, dropSection);
     }
+
     sections = updated;
   });
 
@@ -107,7 +127,7 @@
     </aside>
 
     <section class="main-content">
-      <SectionList bind:sections={sections} {results} />
+      <SectionList bind:sections={sections} {results} stages={standingData.stages} />
     </section>
   </div>
 </main>

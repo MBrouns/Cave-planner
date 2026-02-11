@@ -48,10 +48,10 @@ export function calculateDive(
   const effectiveBackGas = totalBackGas - stageReservation;
   const usableBackGas = effectiveBackGas / 3;
 
-  // Build set of stage IDs that have explicit stage-drop sections
+  // Build set of stage IDs that have explicit stage-drop sections (not pickups)
   const explicitDropStageIds = new Set(
     sections
-      .filter((s) => s.type === 'stage-drop' && s.stageId)
+      .filter((s) => s.type === 'stage-drop' && s.stageId && !s.wayBack)
       .map((s) => s.stageId!)
   );
 
@@ -83,21 +83,22 @@ export function calculateDive(
     let depth: number;
 
     if (section.type === 'stage-drop') {
-      // Execute the drop for the referenced stage
       time = 0;
       depth = currentDepth;
       const stage = stageStates.find((s) => s.id === section.stageId);
-      if (stage && !stage.dropped) {
-        stage.dropped = true;
-      }
-    } else if (section.type === 'stage-pickup') {
-      // Re-activate the stage; breathe remaining gas down to 0
-      time = 0;
-      depth = currentDepth;
-      const stage = stageStates.find((s) => s.id === section.stageId);
-      if (stage && stage.dropped) {
-        stage.dropped = false;
-        stage.dropPressure = 0; // breathe all remaining gas on pickup
+      if (stage) {
+        if (section.wayBack) {
+          // Pickup: re-activate a dropped stage and breathe remaining gas
+          if (stage.dropped) {
+            stage.dropped = false;
+            stage.dropPressure = 0;
+          }
+        } else {
+          // Drop: mark stage as dropped
+          if (!stage.dropped) {
+            stage.dropped = true;
+          }
+        }
       }
     } else if (section.type === 'swim') {
       time =
@@ -143,9 +144,14 @@ export function calculateDive(
           // No explicit section — drop inline and record for auto-insertion
           activeStage.dropped = true;
           droppedThisSection.push(activeStage.id);
+          const consumed = gasNeeded - remaining;
           pendingDropInserts.push({
             afterSectionId: section.id,
             stageId: activeStage.id,
+            splitAtDistance:
+              section.type === 'swim' && gasNeeded > 0
+                ? Math.round((consumed / gasNeeded) * section.distance)
+                : undefined,
           });
         }
         continue;
@@ -165,9 +171,14 @@ export function calculateDive(
         } else {
           activeStage.dropped = true;
           droppedThisSection.push(activeStage.id);
+          const consumed = gasNeeded - remaining;
           pendingDropInserts.push({
             afterSectionId: section.id,
             stageId: activeStage.id,
+            splitAtDistance:
+              section.type === 'swim' && gasNeeded > 0
+                ? Math.round((consumed / gasNeeded) * section.distance)
+                : undefined,
           });
         }
       }
