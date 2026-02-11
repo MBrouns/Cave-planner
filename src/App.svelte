@@ -108,16 +108,16 @@
           {#if calculation.stageReservation > 0}
             <div class="summary-item">
               <span class="summary-label">Stage Reservation</span>
-              <span class="summary-value warn">&minus;{formatNum(calculation.stageReservation, 0)} L</span>
+              <span class="summary-value warn">&minus;{formatNum(calculation.stageReservation, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? calculation.stageReservation / calculation.bottomGasVolume : 0, 0)} bar</span>
             </div>
           {/if}
           <div class="summary-item">
             <span class="summary-label">Effective Back Gas</span>
-            <span class="summary-value">{formatNum(calculation.effectiveBackGas, 0)} L</span>
+            <span class="summary-value">{formatNum(calculation.effectiveBackGas, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? calculation.effectiveBackGas / calculation.bottomGasVolume : 0, 0)} bar</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Usable (1/3 rule)</span>
-            <span class="summary-value highlight">{formatNum(calculation.usableBackGas, 0)} L</span>
+            <span class="summary-value highlight">{formatNum(calculation.usableBackGas, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? calculation.usableBackGas / calculation.bottomGasVolume : 0, 0)} bar</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Turn Pressure</span>
