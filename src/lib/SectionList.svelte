@@ -149,7 +149,6 @@
           <tr>
             <th class="col-drag"></th>
             <th class="col-num">#</th>
-            <th class="col-wayback" title="Return trip (way back)">&#8617;</th>
             <th class="col-type">Type</th>
             <th class="col-depth">Depth (m)</th>
             <th class="col-dist">Dist (m)</th>
@@ -160,6 +159,7 @@
             <th class="col-backgas">Back Gas</th>
             <th class="col-stages">Stages</th>
             <th class="col-notes">Notes</th>
+            <th class="col-wayback">Way Back</th>
             <th class="col-remove"></th>
           </tr>
         </thead>
@@ -177,14 +177,6 @@
             >
               <td class="col-drag drag-handle" title="Drag to reorder">⠿</td>
               <td class="col-num">{i + 1}</td>
-              <td class="col-wayback" title="Return trip (way back)">
-                <input
-                  type="checkbox"
-                  checked={section.wayBack ?? false}
-                  onchange={(e: Event) =>
-                    updateSection(section.id, 'wayBack', (e.currentTarget as HTMLInputElement).checked)}
-                />
-              </td>
               <td class="col-type" data-label="Type">
                 <select
                   value={section.type}
@@ -307,6 +299,17 @@
                   oninput={(e: Event) =>
                     updateSection(section.id, 'note', (e.currentTarget as HTMLInputElement).value)}
                 />
+              </td>
+              <td class="col-wayback">
+                <label class="wayback-label">
+                  <input
+                    type="checkbox"
+                    checked={section.wayBack ?? false}
+                    onchange={(e: Event) =>
+                      updateSection(section.id, 'wayBack', (e.currentTarget as HTMLInputElement).checked)}
+                  />
+                  <span class="wayback-text">Way back</span>
+                </label>
               </td>
               <td class="col-remove">
                 <button
@@ -439,7 +442,7 @@
 
   .col-drag { width: 2rem; text-align: center; }
   .col-num { width: 2rem; text-align: center; color: #666; }
-  .col-wayback { width: 2.5rem; text-align: center; }
+  .col-wayback { width: 5.5rem; text-align: center; }
   .col-type { min-width: 6rem; }
   .col-depth { width: 5rem; }
   .col-dist { width: 5rem; }
@@ -487,6 +490,23 @@
 
   .note-input::placeholder {
     color: #444;
+  }
+
+  .wayback-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .wayback-text {
+    font-size: 0.72rem;
+    color: #888;
+  }
+
+  .wayback-label:has(input:checked) .wayback-text {
+    color: #4fc3f7;
   }
 
   .btn-clear {
@@ -604,7 +624,7 @@
       align-items: center;
     }
 
-    /* Row 1: drag | wayback | Type ▾ | [remove] */
+    /* Row 1: drag | Type ▾ | [remove] */
     td.col-drag {
       grid-row: 1;
       grid-column: 1;
@@ -615,16 +635,9 @@
       display: none;
     }
 
-    td.col-wayback {
-      grid-row: 1;
-      grid-column: 2;
-      width: auto;
-      text-align: left;
-    }
-
     td.col-type {
       grid-row: 1;
-      grid-column: 3;
+      grid-column: 2 / 4;
     }
 
     td.col-remove {
@@ -692,11 +705,19 @@
       min-width: 0;
     }
 
-    /* Row 7: notes (badges) */
+    /* Row 7: notes */
     td.col-notes {
       grid-row: 7;
       grid-column: 1 / 5;
       min-width: 0;
+    }
+
+    /* Row 8: way back */
+    td.col-wayback {
+      grid-row: 8;
+      grid-column: 1 / 5;
+      width: auto;
+      text-align: left;
     }
 
     /* Show data-label as inline prefix on mobile */
