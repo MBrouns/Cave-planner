@@ -41,7 +41,8 @@ export function calculateDive(
   for (const stage of standingData.stages) {
     if (stage.reserveInBackGas) {
       const vol = getStageVolume(stage.tankType);
-      stageReservation += (stage.fillPressure * vol) / 2;
+      const dropPressure = stage.fillPressure / 2 + 15;
+      stageReservation += (stage.fillPressure - dropPressure) * vol;
     }
   }
 
