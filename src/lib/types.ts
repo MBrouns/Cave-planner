@@ -36,6 +36,7 @@ export interface Section {
   type: SectionType;
   avgDepth: number; // meters (used for swim, 0 for nav)
   distance: number; // meters (used for swim, 0 for nav)
+  wayBack?: boolean;
 }
 
 export interface StageState {

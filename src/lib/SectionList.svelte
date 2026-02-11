@@ -104,6 +104,7 @@
       type: s.type,
       avgDepth: s.avgDepth,
       distance: s.distance,
+      wayBack: true,
     }));
     sections = [...sections, ...reversed];
   }
@@ -254,6 +255,9 @@
                 {/if}
               </td>
               <td class="col-notes" data-label="">
+                {#if section.wayBack}
+                  <span class="badge way-back">WAY BACK</span>
+                {/if}
                 {#if result}
                   {#each result.stageDroppedIds as droppedId}
                     {@const dropped = result.stageStates.find(s => s.id === droppedId)}
@@ -460,6 +464,12 @@
     background: rgba(244, 67, 54, 0.2);
     color: #ef5350;
     border: 1px solid #f44336;
+  }
+
+  .badge.way-back {
+    background: rgba(79, 195, 247, 0.15);
+    color: #4fc3f7;
+    border: 1px solid #4fc3f7;
   }
 
   .btn-remove {
