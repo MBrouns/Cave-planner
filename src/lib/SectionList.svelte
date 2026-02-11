@@ -214,7 +214,7 @@
                     value={section.avgDepth}
                     min="0"
                     step="1"
-                    oninput={(e: Event) =>
+                    onchange={(e: Event) =>
                       updateSection(
                         section.id,
                         'avgDepth',
@@ -233,7 +233,7 @@
                     value={section.distance}
                     min="0"
                     step="10"
-                    oninput={(e: Event) =>
+                    onchange={(e: Event) =>
                       updateSection(
                         section.id,
                         'distance',
@@ -296,7 +296,7 @@
                   class="note-input"
                   placeholder="Note"
                   value={section.note ?? ''}
-                  oninput={(e: Event) =>
+                  onchange={(e: Event) =>
                     updateSection(section.id, 'note', (e.currentTarget as HTMLInputElement).value)}
                 />
               </td>
