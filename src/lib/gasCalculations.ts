@@ -28,10 +28,10 @@ export function calculateDive(
   const bottomGasVolume = getBottomGasVolume(standingData.bottomGasType);
   const totalBackGas = bottomGasVolume * standingData.bottomGasFillPressure;
 
-  // Stage reservations deducted from back gas
+  // Stage reservations deducted from back gas (per-stage setting)
   let stageReservation = 0;
-  if (standingData.reserveStageInBackGas) {
-    for (const stage of standingData.stages) {
+  for (const stage of standingData.stages) {
+    if (stage.reserveInBackGas) {
       const vol = getStageVolume(stage.tankType);
       stageReservation += (stage.fillPressure * vol) / 2;
     }

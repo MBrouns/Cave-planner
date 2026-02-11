@@ -18,6 +18,7 @@ export interface StageEntry {
   id: string;
   tankType: string;
   fillPressure: number; // bar
+  reserveInBackGas: boolean;
 }
 
 export interface StandingData {
@@ -26,7 +27,6 @@ export interface StandingData {
   bottomGasType: string; // key into BOTTOM_GAS_TYPES
   bottomGasFillPressure: number; // bar
   stages: StageEntry[];
-  reserveStageInBackGas: boolean;
 }
 
 export type SectionType = 'swim' | 't-left' | 't-right' | 'jump-left' | 'jump-right';
