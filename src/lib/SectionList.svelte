@@ -98,7 +98,43 @@
     return type === 'swim';
   }
 
-  const sectionTypeEntries = Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][];
+  function isStageSection(type: SectionType): boolean {
+    return type === 'stage-drop' || type === 'stage-pickup';
+  }
+
+  function stageNameFromId(stageId: string | undefined, result: SectionResult | undefined): string {
+    if (!stageId || !result) return '';
+    const state = result.stageStates.find(s => s.id === stageId);
+    return state ? stageName(state) : stageId;
+  }
+
+  function addReturnSections() {
+    const reversed = [...sections].reverse().map((s): Section => {
+      if (s.type === 'stage-drop') {
+        return {
+          id: generateId(),
+          type: 'stage-pickup',
+          avgDepth: 0,
+          distance: 0,
+          stageId: s.stageId,
+          wayBack: true,
+        };
+      }
+      return {
+        id: generateId(),
+        type: s.type,
+        avgDepth: s.avgDepth,
+        distance: s.distance,
+        wayBack: true,
+      };
+    });
+    sections = [...sections, ...reversed];
+  }
+
+  // Only user-addable section types (exclude auto-generated stage-drop/pickup)
+  const editableSectionTypes: [SectionType, string][] = (
+    Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][]
+  ).filter(([val]) => val !== 'stage-drop' && val !== 'stage-pickup');
 </script>
 
 <div class="section-list">
@@ -147,21 +183,28 @@
               <td class="col-drag drag-handle" title="Drag to reorder">⠿</td>
               <td class="col-num">{i + 1}</td>
               <td class="col-type" data-label="Type">
-                <select
-                  value={section.type}
-                  onchange={(e: Event) => {
-                    const newType = (e.currentTarget as HTMLSelectElement).value as SectionType;
-                    updateSection(section.id, 'type', newType);
-                    if (newType !== 'swim') {
-                      updateSection(section.id, 'avgDepth', 0);
-                      updateSection(section.id, 'distance', 0);
-                    }
-                  }}
-                >
-                  {#each sectionTypeEntries as [val, label]}
-                    <option value={val}>{label}</option>
-                  {/each}
-                </select>
+                {#if isStageSection(section.type)}
+                  <span class="stage-section-label">
+                    {SECTION_TYPE_LABELS[section.type]}
+                    <span class="stage-section-name">{stageNameFromId(section.stageId, result)}</span>
+                  </span>
+                {:else}
+                  <select
+                    value={section.type}
+                    onchange={(e: Event) => {
+                      const newType = (e.currentTarget as HTMLSelectElement).value as SectionType;
+                      updateSection(section.id, 'type', newType);
+                      if (newType !== 'swim') {
+                        updateSection(section.id, 'avgDepth', 0);
+                        updateSection(section.id, 'distance', 0);
+                      }
+                    }}
+                  >
+                    {#each editableSectionTypes as [val, label]}
+                      <option value={val}>{label}</option>
+                    {/each}
+                  </select>
+                {/if}
               </td>
               <td class="col-depth" data-label="Depth">
                 {#if isSwim(section.type)}
@@ -178,8 +221,8 @@
                       )}
                   />
                   <span class="unit">m</span>
-                {:else}
-                  <span class="dim">&mdash;</span>
+                {:else if result}
+                  <span class="inherited">{formatNum(result.depth, 0)}m</span>
                 {/if}
               </td>
               <td class="col-dist" data-label="Dist">
@@ -202,8 +245,10 @@
                 {/if}
               </td>
               <td class="col-time" data-label="Time">
-                {#if result}
+                {#if result && isSwim(section.type)}
                   {formatTime(result.time)}
+                {:else if !isSwim(section.type)}
+                  <span class="dim">&mdash;</span>
                 {/if}
               </td>
               <td class="col-gas" data-label="Gas">
@@ -242,16 +287,11 @@
                 {/if}
               </td>
               <td class="col-notes" data-label="">
-                {#if result}
-                  {#each result.stageDroppedIds as droppedId}
-                    {@const dropped = result.stageStates.find(s => s.id === droppedId)}
-                    {#if dropped}
-                      <span class="badge drop">DROP {stageName(dropped)}</span>
-                    {/if}
-                  {/each}
-                  {#if result.turnWarning}
-                    <span class="badge turn">TURN</span>
-                  {/if}
+                {#if section.wayBack}
+                  <span class="badge way-back">WAY BACK</span>
+                {/if}
+                {#if result?.turnWarning}
+                  <span class="badge turn">TURN</span>
                 {/if}
               </td>
               <td class="col-remove">
@@ -266,6 +306,10 @@
         </tbody>
       </table>
     </div>
+
+    <button class="btn-return" onclick={addReturnSections}>
+      Add the sections on the way back
+    </button>
   {:else}
     <p class="empty-hint">Add sections to start planning your dive.</p>
   {/if}
@@ -399,6 +443,25 @@
 
   .dim { color: #555; }
 
+  .stage-section-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #ffb74d;
+    white-space: nowrap;
+  }
+
+  .stage-section-name {
+    font-weight: 400;
+    color: #aaa;
+    margin-left: 0.3rem;
+  }
+
+  .inherited {
+    color: #888;
+    font-style: italic;
+    font-size: 0.78rem;
+  }
+
   .sub {
     color: #777;
     font-size: 0.72rem;
@@ -428,16 +491,16 @@
     white-space: nowrap;
   }
 
-  .badge.drop {
-    background: rgba(255, 152, 0, 0.2);
-    color: #ffb74d;
-    border: 1px solid #ff9800;
-  }
-
   .badge.turn {
     background: rgba(244, 67, 54, 0.2);
     color: #ef5350;
     border: 1px solid #f44336;
+  }
+
+  .badge.way-back {
+    background: rgba(79, 195, 247, 0.15);
+    color: #4fc3f7;
+    border: 1px solid #4fc3f7;
   }
 
   .btn-remove {
@@ -458,6 +521,23 @@
     color: #777;
     font-size: 0.72rem;
     margin-left: 0.15rem;
+  }
+
+  .btn-return {
+    display: block;
+    margin: 1rem auto 0;
+    background: #16213e;
+    border: 1px solid #444;
+    color: #4fc3f7;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .btn-return:hover {
+    background: #1a2744;
+    border-color: #4fc3f7;
   }
 
   .empty-hint {
@@ -587,7 +667,6 @@
     }
 
     /* Hide dash placeholders on non-swim rows */
-    td.col-depth .dim,
     td.col-dist .dim {
       display: none;
     }

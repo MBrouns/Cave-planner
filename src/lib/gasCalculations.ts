@@ -20,6 +20,14 @@ import { getBottomGasVolume, getStageVolume } from './types';
  *    is deducted from back gas capacity.
  *  - Usable back gas = effectiveBackGas / 3 (rule of thirds).
  *  - Turn warning when that third is consumed.
+ *
+ * Stage-drop sections: explicit markers for when a stage is dropped.
+ *   Auto-inserted by the UI when the calculation detects a stage reaching
+ *   drop pressure. If an explicit stage-drop section exists for a stage,
+ *   the drop is deferred to that section.
+ *
+ * Stage-pickup sections: reverse of stage-drop, used on the way back.
+ *   Re-activates a dropped stage and breathes remaining gas (down to 0).
  */
 export function calculateDive(
   standingData: StandingData,
@@ -39,6 +47,13 @@ export function calculateDive(
 
   const effectiveBackGas = totalBackGas - stageReservation;
   const usableBackGas = effectiveBackGas / 3;
+
+  // Build set of stage IDs that have explicit stage-drop sections
+  const explicitDropStageIds = new Set(
+    sections
+      .filter((s) => s.type === 'stage-drop' && s.stageId)
+      .map((s) => s.stageId!)
+  );
 
   // Mutable stage tracking
   const stageStates: StageState[] = standingData.stages.map((s) => {
@@ -61,12 +76,30 @@ export function calculateDive(
   let currentDepth = 0;
 
   const results: SectionResult[] = [];
+  const pendingDropInserts: { afterSectionId: string; stageId: string }[] = [];
 
   for (const section of sections) {
     let time: number;
     let depth: number;
 
-    if (section.type === 'swim') {
+    if (section.type === 'stage-drop') {
+      // Execute the drop for the referenced stage
+      time = 0;
+      depth = currentDepth;
+      const stage = stageStates.find((s) => s.id === section.stageId);
+      if (stage && !stage.dropped) {
+        stage.dropped = true;
+      }
+    } else if (section.type === 'stage-pickup') {
+      // Re-activate the stage; breathe remaining gas down to 0
+      time = 0;
+      depth = currentDepth;
+      const stage = stageStates.find((s) => s.id === section.stageId);
+      if (stage && stage.dropped) {
+        stage.dropped = false;
+        stage.dropPressure = 0; // breathe all remaining gas on pickup
+      }
+    } else if (section.type === 'swim') {
       time =
         standingData.swimSpeed > 0
           ? section.distance / standingData.swimSpeed
@@ -88,9 +121,14 @@ export function calculateDive(
     let remaining = gasNeeded;
     const droppedThisSection: string[] = [];
 
+    // Stages skipped this section (at drop pressure, deferred to explicit stage-drop)
+    const skippedStageIds = new Set<string>();
+
     // Consume from stages first
     while (remaining > 0) {
-      const activeStage = stageStates.find((s) => !s.dropped);
+      const activeStage = stageStates.find(
+        (s) => !s.dropped && !skippedStageIds.has(s.id)
+      );
       if (!activeStage) break;
 
       const availableFromStage =
@@ -98,8 +136,18 @@ export function calculateDive(
         activeStage.volume;
 
       if (availableFromStage <= 0) {
-        activeStage.dropped = true;
-        droppedThisSection.push(activeStage.id);
+        if (explicitDropStageIds.has(activeStage.id)) {
+          // Explicit stage-drop section exists — skip, don't drop inline
+          skippedStageIds.add(activeStage.id);
+        } else {
+          // No explicit section — drop inline and record for auto-insertion
+          activeStage.dropped = true;
+          droppedThisSection.push(activeStage.id);
+          pendingDropInserts.push({
+            afterSectionId: section.id,
+            stageId: activeStage.id,
+          });
+        }
         continue;
       }
 
@@ -110,8 +158,18 @@ export function calculateDive(
         // Exhaust this stage to its drop pressure
         remaining -= availableFromStage;
         activeStage.currentPressure = activeStage.dropPressure;
-        activeStage.dropped = true;
-        droppedThisSection.push(activeStage.id);
+
+        if (explicitDropStageIds.has(activeStage.id)) {
+          // Defer the actual drop to the explicit stage-drop section
+          skippedStageIds.add(activeStage.id);
+        } else {
+          activeStage.dropped = true;
+          droppedThisSection.push(activeStage.id);
+          pendingDropInserts.push({
+            afterSectionId: section.id,
+            stageId: activeStage.id,
+          });
+        }
       }
     }
 
@@ -156,5 +214,6 @@ export function calculateDive(
     effectiveBackGas,
     usableBackGas,
     bottomGasVolume,
+    pendingDropInserts,
   };
 }

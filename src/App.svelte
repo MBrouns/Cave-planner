@@ -9,6 +9,7 @@
     saveSections,
   } from './lib/storage';
   import type { StandingData, Section, SectionResult, DiveCalculation } from './lib/types';
+  import { generateId } from './lib/types';
 
   let standingData: StandingData = $state(loadStandingData() ?? {
     scr: 20,
@@ -29,6 +30,30 @@
 
   $effect(() => {
     saveSections(sections);
+  });
+
+  // Auto-insert stage-drop sections when the calculation detects a stage
+  // reaching drop pressure without an explicit stage-drop section.
+  $effect(() => {
+    const inserts = calculation.pendingDropInserts;
+    if (inserts.length === 0) return;
+
+    const updated = [...sections];
+    let offset = 0;
+    for (const insert of inserts) {
+      const idx = updated.findIndex((s) => s.id === insert.afterSectionId);
+      if (idx === -1) continue;
+      const dropSection: Section = {
+        id: generateId(),
+        type: 'stage-drop',
+        avgDepth: 0,
+        distance: 0,
+        stageId: insert.stageId,
+      };
+      updated.splice(idx + 1 + offset, 0, dropSection);
+      offset++;
+    }
+    sections = updated;
   });
 
   function formatNum(n: number, d: number = 0): string {
