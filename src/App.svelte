@@ -89,6 +89,12 @@
     return Math.floor(n / 10) * 10;
   }
 
+  function formatTime(minutes: number): string {
+    const m = Math.floor(minutes);
+    const s = Math.round((minutes - m) * 60);
+    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  }
+
   function stageLabel(tankType: string): string {
     return STAGE_TANK_TYPES.find(t => t.name === tankType)?.label ?? tankType;
   }
@@ -149,6 +155,23 @@
           {/each}
         </div>
       </div>
+
+      {#if results.length > 0}
+        {@const last = results[results.length - 1]}
+        <div class="summary-card">
+          <h2>Dive Summary</h2>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Total Runtime</span>
+              <span class="summary-value highlight">{formatTime(last.runningTime)}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Avg Depth</span>
+              <span class="summary-value highlight">{formatNum(last.runningAvgDepth, 1)}m</span>
+            </div>
+          </div>
+        </div>
+      {/if}
     </aside>
 
     <section class="main-content">
