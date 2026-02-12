@@ -207,8 +207,7 @@ export function calculateDive(
     const remainingBackGasBar = bottomGasVolume > 0
       ? remainingBackGasLiters / bottomGasVolume
       : 0;
-    const isTurn = section.type === 't-left' || section.type === 't-right';
-    const turnWarning = !isTurn && remainingBackGasBar < turnPressureBar && turnPressureBar > 0;
+    const turnWarning = !section.wayBack && remainingBackGasBar < turnPressureBar && turnPressureBar > 0;
 
     results.push({
       sectionId: section.id,
