@@ -84,6 +84,10 @@
     return Math.ceil(n / 10) * 10;
   }
 
+  function floorTo10(n: number): number {
+    return Math.floor(n / 10) * 10;
+  }
+
   function stageLabel(tankType: string): string {
     return STAGE_TANK_TYPES.find(t => t.name === tankType)?.label ?? tankType;
   }
@@ -108,7 +112,7 @@
           {#if calculation.stageReservation > 0}
             <div class="summary-item">
               <span class="summary-label">Stage Reservation</span>
-              <span class="summary-value warn">&minus;{formatNum(calculation.stageReservation, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? calculation.stageReservation / calculation.bottomGasVolume : 0, 0)} bar</span>
+              <span class="summary-value warn">&minus;{formatNum(calculation.stageReservation, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? ceilTo10(calculation.stageReservation / calculation.bottomGasVolume) : 0, 0)} bar</span>
             </div>
           {/if}
           <div class="summary-item">
@@ -117,7 +121,7 @@
           </div>
           <div class="summary-item">
             <span class="summary-label">Usable (1/3 rule)</span>
-            <span class="summary-value highlight">{formatNum(calculation.usableBackGas, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? calculation.usableBackGas / calculation.bottomGasVolume : 0, 0)} bar</span>
+            <span class="summary-value highlight">{formatNum(calculation.usableBackGas, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? floorTo10(calculation.usableBackGas / calculation.bottomGasVolume) : 0, 0)} bar</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Turn Pressure</span>
@@ -141,7 +145,7 @@
     </aside>
 
     <section class="main-content">
-      <SectionList bind:sections={sections} {results} stages={standingData.stages} />
+      <SectionList bind:sections={sections} {results} stages={standingData.stages} usableBackGas={calculation.usableBackGas} />
     </section>
   </div>
 </main>

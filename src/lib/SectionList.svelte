@@ -10,10 +10,11 @@
     type StageEntry,
   } from './types';
 
-  let { sections = $bindable(), results, stages }: {
+  let { sections = $bindable(), results, stages, usableBackGas }: {
     sections: Section[];
     results: SectionResult[];
     stages: StageEntry[];
+    usableBackGas: number;
   } = $props();
 
   let dragIndex: number | null = $state(null);
@@ -110,6 +111,23 @@
 
   function isSwim(type: SectionType): boolean {
     return type === 'swim';
+  }
+
+  function fixDistance(sectionIndex: number) {
+    const section = sections[sectionIndex];
+    if (section.type !== 'swim' || section.distance === 0) return;
+    const result = results[sectionIndex];
+    if (!result) return;
+    const prevBackGasUsed = sectionIndex > 0 ? results[sectionIndex - 1]?.backGasUsedTotal ?? 0 : 0;
+    const backGasUsedInSection = result.backGasUsedTotal - prevBackGasUsed;
+    const availableBackGas = usableBackGas - prevBackGasUsed;
+    if (availableBackGas <= 0) {
+      updateSection(section.id, 'distance', 0);
+      return;
+    }
+    if (backGasUsedInSection <= 0) return;
+    const maxDist = Math.floor(section.distance * availableBackGas / backGasUsedInSection);
+    updateSection(section.id, 'distance', maxDist);
   }
 
   function addReturnSections() {
@@ -269,10 +287,18 @@
               </td>
               <td class="col-backgas" data-label="Back Gas">
                 {#if result}
-                  <span class:low-gas={result.remainingBackGasBar < 50}>
-                    {formatNum(result.remainingBackGasBar, 0)} bar
-                  </span>
-                  <span class="sub">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
+                  {#if result.turnWarning}
+                    <span class="over-turn">&#9888; {formatNum(result.remainingBackGasBar, 0)} bar</span>
+                    <span class="sub over-turn">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
+                    {#if isSwim(section.type)}
+                      <button class="btn-fix" onclick={() => fixDistance(i)}>Fix</button>
+                    {/if}
+                  {:else}
+                    <span class:low-gas={result.remainingBackGasBar < 50}>
+                      {formatNum(result.remainingBackGasBar, 0)} bar
+                    </span>
+                    <span class="sub">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
+                  {/if}
                 {/if}
               </td>
               <td class="col-stages" data-label="Stages">
@@ -538,6 +564,26 @@
   }
 
   .low-gas { color: #e57373; font-weight: 600; }
+
+  .over-turn { color: #f44336; font-weight: 600; }
+
+  .btn-fix {
+    display: inline-block;
+    background: rgba(244, 67, 54, 0.15);
+    border: 1px solid #f44336;
+    color: #ef5350;
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.68rem;
+    font-weight: 600;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+  }
+
+  .btn-fix:hover {
+    background: rgba(244, 67, 54, 0.3);
+  }
 
   .stage-pill {
     display: inline-block;
