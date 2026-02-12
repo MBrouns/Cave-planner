@@ -17,6 +17,7 @@
     bottomGasType: '2x80',
     bottomGasFillPressure: 220,
     conservatism: 0,
+    stageStandingTime: 2,
     stages: [],
   });
 

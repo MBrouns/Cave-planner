@@ -27,6 +27,7 @@ export interface StandingData {
   bottomGasType: string; // key into BOTTOM_GAS_TYPES
   bottomGasFillPressure: number; // bar
   conservatism: number; // bar, deducted from usable back gas
+  stageStandingTime: number; // minutes spent at each stage drop-off/pick-up
   stages: StageEntry[];
 }
 

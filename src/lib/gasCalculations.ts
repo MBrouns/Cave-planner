@@ -93,7 +93,7 @@ export function calculateDive(
     let depth: number;
 
     if (section.type === 'stage-drop') {
-      time = 0;
+      time = standingData.stageStandingTime ?? 2;
       depth = currentDepth;
       const stage = stageStates.find((s) => s.id === section.stageId);
       if (stage) {
@@ -137,8 +137,9 @@ export function calculateDive(
     // Stages skipped this section (at drop pressure, deferred to explicit stage-drop)
     const skippedStageIds = new Set<string>();
 
-    // Consume from stages first
-    while (remaining > 0) {
+    // Stage-drop standing time is consumed from back gas only
+    // Consume from stages first for all other sections
+    while (remaining > 0 && section.type !== 'stage-drop') {
       const activeStage = stageStates.find(
         (s) => !s.dropped && !skippedStageIds.has(s.id)
       );
