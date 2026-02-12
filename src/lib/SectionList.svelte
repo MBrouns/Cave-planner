@@ -81,6 +81,44 @@
     dragOverIndex = null;
   }
 
+  function handleTouchStart(e: TouchEvent, index: number) {
+    dragIndex = index;
+
+    const onTouchMove = (ev: TouchEvent) => {
+      ev.preventDefault();
+      const touch = ev.touches[0];
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (element) {
+        const card = element.closest('.section-card') as HTMLElement | null;
+        if (card) {
+          const cards = Array.from(document.querySelectorAll('.section-card'));
+          const overIndex = cards.indexOf(card);
+          if (overIndex >= 0) {
+            dragOverIndex = overIndex;
+          }
+        }
+      }
+    };
+
+    const cleanup = () => {
+      if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+        const updated = [...sections];
+        const [moved] = updated.splice(dragIndex, 1);
+        updated.splice(dragOverIndex, 0, moved);
+        sections = updated;
+      }
+      dragIndex = null;
+      dragOverIndex = null;
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', cleanup);
+      document.removeEventListener('touchcancel', cleanup);
+    };
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', cleanup);
+    document.addEventListener('touchcancel', cleanup);
+  }
+
   function getResult(sectionId: string): SectionResult | undefined {
     return results.find((r) => r.sectionId === sectionId);
   }
@@ -231,6 +269,7 @@
         {@const carried = result ? activeStages(result.stageStates) : []}
         <div
           class="section-card"
+          class:dragging={dragIndex === i}
           class:drag-over={dragOverIndex === i && dragIndex !== i}
           class:warning-card={result?.turnWarning ?? false}
           class:wayback-card={section.wayBack ?? false}
@@ -243,7 +282,13 @@
         >
           <!-- Card header -->
           <div class="card-header">
-            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <span
+              class="drag-handle"
+              role="button"
+              tabindex="0"
+              title="Drag to reorder"
+              ontouchstart={(e: TouchEvent) => handleTouchStart(e, i)}
+            >⠿</span>
             <span class="row-num">{i + 1}</span>
             <select
               value={section.type}
@@ -483,6 +528,10 @@
     border-color: #3a3a5a;
   }
 
+  .section-card.dragging {
+    opacity: 0.5;
+  }
+
   .section-card.drag-over {
     border-top: 2px solid #4fc3f7;
   }
@@ -515,6 +564,7 @@
     font-size: 1rem;
     user-select: none;
     line-height: 1;
+    touch-action: none;
   }
 
   .drag-handle:active {
