@@ -289,9 +289,9 @@
             <button class="btn-remove" onclick={() => removeSection(section.id)} title="Remove section">✕</button>
           </div>
 
-          <!-- Data fields -->
-          <div class="card-data">
-            {#if swim}
+          <!-- User inputs (swim only) -->
+          {#if swim}
+            <div class="card-inputs">
               <div class="field">
                 <span class="field-label">Depth</span>
                 <span class="field-value">
@@ -318,32 +318,31 @@
                   /><span class="unit">m</span>
                 </span>
               </div>
-            {:else if result}
-              <div class="field">
-                <span class="field-label">Depth</span>
-                <span class="field-value inherited">{formatNum(result.depth, 0)}m</span>
-              </div>
-            {/if}
+            </div>
+          {/if}
 
-            {#if result}
-              {@const backGasUsed = getBackGasUsed(i)}
-              {#if swim}
+          <!-- Computed results -->
+          {#if result}
+            {@const backGasUsed = getBackGasUsed(i)}
+            <div class="card-data">
+              {#if !swim}
                 <div class="field">
-                  <span class="field-label">Time</span>
-                  <span class="field-value">{formatTime(result.time)}</span>
+                  <span class="field-label">Depth</span>
+                  <span class="field-value inherited">{formatNum(result.depth, 0)}m</span>
                 </div>
               {/if}
-              <div class="field">
-                <span class="field-label">Gas Used</span>
-                <span class="field-value">{formatNum(result.gasConsumed, 0)} L</span>
-              </div>
               <div class="field">
                 <span class="field-label">Source</span>
                 <span class="field-value source">{gasSourceLabel(result)}</span>
               </div>
               <div class="field">
                 <span class="field-label">Run Time</span>
-                <span class="field-value">{formatTime(result.runningTime)}</span>
+                <span class="field-value">
+                  {formatTime(result.runningTime)}
+                  {#if swim}
+                    <span class="sub">(+{formatTime(result.time)})</span>
+                  {/if}
+                </span>
               </div>
               <div class="field">
                 <span class="field-label">Avg Depth</span>
@@ -378,8 +377,8 @@
                   </span>
                 </div>
               {/if}
-            {/if}
-          </div>
+            </div>
+          {/if}
 
           <!-- Notes -->
           <div class="card-footer">
@@ -477,6 +476,7 @@
     border-radius: 6px;
     padding: 0.6rem 0.75rem;
     transition: border-color 0.15s, background 0.15s;
+    overflow: hidden;
   }
 
   .section-card:hover {
@@ -493,12 +493,12 @@
   }
 
   .section-card.wayback-card {
-    border-left: 3px solid #3a3a5a;
+    border-left: 4px solid #4fc3f7;
   }
 
   .section-card.wayback-card.warning-card {
     border-color: rgba(255, 183, 77, 0.3);
-    border-left: 3px solid rgba(255, 183, 77, 0.3);
+    border-left: 4px solid #ffb74d;
   }
 
   /* ── Card header ── */
@@ -599,7 +599,16 @@
     border: 1px solid #f44336;
   }
 
-  /* ── Card data ── */
+  /* ── Card inputs (user-editable row) ── */
+  .card-inputs {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.35rem 0 0.3rem 1.7rem;
+    border-bottom: 1px solid #2a2a4a;
+    margin-bottom: 0.25rem;
+  }
+
+  /* ── Card data (computed results) ── */
   .card-data {
     display: flex;
     flex-wrap: wrap;
@@ -762,13 +771,35 @@
 
   /* ── Mobile ── */
   @media (max-width: 900px) {
+    .section-list {
+      padding: 0.75rem;
+    }
+
+    .card-header {
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .card-header select {
+      min-width: 0;
+      flex-shrink: 1;
+    }
+
+    .card-inputs {
+      padding-left: 0;
+    }
+
     .card-data {
       padding-left: 0;
-      gap: 0.15rem 1rem;
+      gap: 0.15rem 0.75rem;
     }
 
     .card-footer {
       padding-left: 0;
+    }
+
+    .stage-pill {
+      font-size: 0.68rem;
     }
   }
 </style>
