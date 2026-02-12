@@ -68,6 +68,17 @@
         onchange={(e: Event) => { data = { ...data, bottomGasFillPressure: Number((e.currentTarget as HTMLInputElement).value) }; }}
       />
     </label>
+
+    <label>
+      Conservatism (bar)
+      <input
+        type="number"
+        value={data.conservatism ?? 0}
+        min="0"
+        step="1"
+        onchange={(e: Event) => { data = { ...data, conservatism: Number((e.currentTarget as HTMLInputElement).value) }; }}
+      />
+    </label>
   </div>
 
   <div class="stages-section">

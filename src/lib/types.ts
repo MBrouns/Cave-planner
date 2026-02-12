@@ -26,6 +26,7 @@ export interface StandingData {
   swimSpeed: number; // m/min
   bottomGasType: string; // key into BOTTOM_GAS_TYPES
   bottomGasFillPressure: number; // bar
+  conservatism: number; // bar, deducted from usable back gas
   stages: StageEntry[];
 }
 
