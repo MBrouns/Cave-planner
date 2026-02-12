@@ -385,21 +385,6 @@
             </tr>
           {/each}
         </tbody>
-        {#if results.length > 0}
-          {@const last = results[results.length - 1]}
-          <tfoot>
-            <tr class="totals-row">
-              <td colspan="2"></td>
-              <td colspan="12">
-                <span class="totals-label">Total Runtime</span>
-                <span class="totals-value">{formatTime(last.runningTime)}</span>
-                <span class="totals-sep">&middot;</span>
-                <span class="totals-label">Avg Depth</span>
-                <span class="totals-value">{formatNum(last.runningAvgDepth, 1)}m</span>
-              </td>
-            </tr>
-          </tfoot>
-        {/if}
       </table>
     </div>
 
@@ -500,33 +485,6 @@
 
   tbody tr.wayback-row.warning-row {
     background: rgba(255, 183, 77, 0.08);
-  }
-
-  .totals-row {
-    border-top: 2px solid #333;
-  }
-
-  .totals-row td {
-    padding-top: 0.6rem;
-    font-size: 0.82rem;
-  }
-
-  .totals-value {
-    color: #4fc3f7;
-    font-weight: 600;
-  }
-
-  .totals-label {
-    color: #888;
-    font-weight: 500;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    margin-right: 0.3rem;
-  }
-
-  .totals-sep {
-    color: #555;
-    margin: 0 0.5rem;
   }
 
   td {
