@@ -49,6 +49,14 @@ export function calculateDive(
   const effectiveBackGas = totalBackGas - stageReservation;
   const usableBackGas = effectiveBackGas / 3;
 
+  // Rounded bar values used for turn warning comparison
+  const turnPressureBar = bottomGasVolume > 0
+    ? Math.ceil((totalBackGas - usableBackGas) / bottomGasVolume / 10) * 10
+    : 0;
+  const usableBackGasRounded = bottomGasVolume > 0
+    ? Math.floor(usableBackGas / bottomGasVolume / 10) * 10 * bottomGasVolume
+    : usableBackGas;
+
   // Build set of stage IDs that have explicit stage-drop sections (not pickups)
   const explicitDropStageIds = new Set(
     sections
@@ -196,7 +204,10 @@ export function calculateDive(
     timeDepthProduct += time * depth;
     const runningAvgDepth = runningTime > 0 ? timeDepthProduct / runningTime : 0;
 
-    const turnWarning = backGasUsedTotal >= usableBackGas && usableBackGas > 0;
+    const remainingBackGasBar = bottomGasVolume > 0
+      ? remainingBackGasLiters / bottomGasVolume
+      : 0;
+    const turnWarning = remainingBackGasBar < turnPressureBar && turnPressureBar > 0;
 
     results.push({
       sectionId: section.id,
@@ -206,10 +217,7 @@ export function calculateDive(
       runningTime,
       runningAvgDepth,
       remainingBackGasLiters,
-      remainingBackGasBar:
-        bottomGasVolume > 0
-          ? remainingBackGasLiters / bottomGasVolume
-          : 0,
+      remainingBackGasBar,
       stageStates: stageStates.map((s) => ({ ...s })),
       stageDroppedIds: droppedThisSection,
       turnWarning,
@@ -225,6 +233,7 @@ export function calculateDive(
     stageReservation,
     effectiveBackGas,
     usableBackGas,
+    usableBackGasRounded,
     bottomGasVolume,
     pendingDropInserts,
   };
