@@ -191,7 +191,7 @@
     border-radius: 4px;
     color: #e0e0e0;
     padding: 0.4rem 0.5rem;
-    font-size: 0.85rem;
+    font-size: 1rem;
   }
 
   input[type='number']:focus,

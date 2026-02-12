@@ -511,7 +511,7 @@
     border-radius: 3px;
     color: #e0e0e0;
     padding: 0.25rem 0.35rem;
-    font-size: 0.8rem;
+    font-size: 1rem;
     width: 100%;
   }
 
@@ -545,7 +545,7 @@
 
   .stage-picker {
     margin-top: 0.2rem;
-    font-size: 0.75rem;
+    font-size: 1rem;
   }
 
   .note-input {
@@ -554,7 +554,7 @@
     border-radius: 3px;
     color: #ccc;
     padding: 0.15rem 0.3rem;
-    font-size: 0.75rem;
+    font-size: 1rem;
     width: 100%;
     min-width: 4rem;
   }
