@@ -66,6 +66,8 @@ export interface SectionResult {
   backGasUsedTotal: number;
   effectiveBackGas: number;
   usableBackGas: number; // 1/3 of effective
+  breathedStageIds: string[]; // stage IDs breathed from this section
+  breathedBackGas: boolean; // whether back gas was consumed this section
 }
 
 export interface DiveCalculation {

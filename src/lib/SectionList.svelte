@@ -95,14 +95,45 @@
     return s > 0 ? `${m}m ${s}s` : `${m}m`;
   }
 
+  function stageIndex(stageId: string): number {
+    return stages.findIndex(s => s.id === stageId);
+  }
+
+  function stageTag(stageId: string): string {
+    const idx = stageIndex(stageId);
+    return idx >= 0 ? `S${idx + 1}` : '??';
+  }
+
   function stageName(state: StageState): string {
+    const tag = stageTag(state.id);
     const tank = STAGE_TANK_TYPES.find(t => t.name === state.tankType);
-    return tank ? tank.label : state.tankType;
+    return `${tag} ${tank ? tank.label : state.tankType}`;
   }
 
   function stageLabel(entry: StageEntry): string {
+    const tag = stageTag(entry.id);
     const tank = STAGE_TANK_TYPES.find(t => t.name === entry.tankType);
-    return tank ? tank.label : entry.tankType;
+    return `${tag} ${tank ? tank.label : entry.tankType}`;
+  }
+
+  function gasSourceLabel(result: SectionResult): string {
+    const parts: string[] = [];
+    for (const id of result.breathedStageIds) {
+      parts.push(stageTag(id));
+    }
+    if (result.breathedBackGas) {
+      parts.push('BG');
+    }
+    if (parts.length === 0) {
+      // No gas consumed — show what would be breathed (first active stage or back gas)
+      const active = result.stageStates.find(s => !s.dropped);
+      if (active) {
+        parts.push(stageTag(active.id));
+      } else {
+        parts.push('BG');
+      }
+    }
+    return parts.join(' → ');
   }
 
   function activeStages(states: StageState[]): StageState[] {
@@ -172,6 +203,7 @@
             <th class="col-dist">Dist (m)</th>
             <th class="col-time">Time</th>
             <th class="col-gas">Gas Used (L)</th>
+            <th class="col-source">Source</th>
             <th class="col-run-time">Run Time</th>
             <th class="col-avg-depth">Avg Depth</th>
             <th class="col-backgas">Back Gas</th>
@@ -273,6 +305,11 @@
               <td class="col-gas" data-label="Gas">
                 {#if result}
                   {formatNum(result.gasConsumed, 0)} L
+                {/if}
+              </td>
+              <td class="col-source" data-label="Source">
+                {#if result}
+                  <span class="source-label">{gasSourceLabel(result)}</span>
                 {/if}
               </td>
               <td class="col-run-time" data-label="Run">
@@ -474,6 +511,7 @@
   .col-dist { width: 5rem; }
   .col-time { width: 4.5rem; }
   .col-gas { width: 5rem; }
+  .col-source { width: 4.5rem; }
   .col-run-time { width: 5rem; }
   .col-avg-depth { width: 5rem; }
   .col-backgas { width: 7rem; }
@@ -583,6 +621,13 @@
 
   .btn-fix:hover {
     background: rgba(244, 67, 54, 0.3);
+  }
+
+  .source-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #81d4fa;
+    white-space: nowrap;
   }
 
   .stage-pill {
@@ -711,6 +756,7 @@
     /* Row 3: computed values as a flowing grid */
     td.col-time,
     td.col-gas,
+    td.col-source,
     td.col-run-time,
     td.col-avg-depth {
       width: auto;
@@ -719,10 +765,15 @@
 
     td.col-time {
       grid-row: 3;
-      grid-column: 1 / 3;
+      grid-column: 1 / 2;
     }
 
     td.col-gas {
+      grid-row: 3;
+      grid-column: 2 / 3;
+    }
+
+    td.col-source {
       grid-row: 3;
       grid-column: 3 / 5;
     }

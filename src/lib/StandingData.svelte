@@ -79,6 +79,7 @@
       <table class="stages-table">
         <thead>
           <tr>
+            <th class="col-id"></th>
             <th>Tank</th>
             <th>Fill (bar)</th>
             <th>Reserve</th>
@@ -86,8 +87,9 @@
           </tr>
         </thead>
         <tbody>
-          {#each data.stages as stage (stage.id)}
+          {#each data.stages as stage, i (stage.id)}
             <tr>
+              <td class="stage-id">S{i + 1}</td>
               <td>
                 <select
                   value={stage.tankType}
@@ -221,6 +223,15 @@
   }
 
   .stages-table td.center {
+    text-align: center;
+  }
+
+  .col-id { width: 2.5rem; }
+
+  .stage-id {
+    color: #81d4fa;
+    font-weight: 600;
+    font-size: 0.8rem;
     text-align: center;
   }
 
