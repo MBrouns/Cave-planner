@@ -79,6 +79,17 @@
         onchange={(e: Event) => { data = { ...data, conservatism: Number((e.currentTarget as HTMLInputElement).value) }; }}
       />
     </label>
+
+    <label>
+      Stage Standing Time (min)
+      <input
+        type="number"
+        value={data.stageStandingTime ?? 2}
+        min="0"
+        step="0.5"
+        onchange={(e: Event) => { data = { ...data, stageStandingTime: Number((e.currentTarget as HTMLInputElement).value) }; }}
+      />
+    </label>
   </div>
 
   <div class="stages-section">
