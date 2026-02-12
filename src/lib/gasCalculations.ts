@@ -58,10 +58,13 @@ export function calculateDive(
     ? Math.floor(usableBackGas / bottomGasVolume / 10) * 10 * bottomGasVolume
     : usableBackGas;
 
+  // Determine the index of the first turnaround section (if any)
+  const turnaroundIndex = sections.findIndex((s) => s.type === 'turnaround');
+
   // Build set of stage IDs that have explicit stage-drop sections (not pickups)
   const explicitDropStageIds = new Set(
     sections
-      .filter((s) => s.type === 'stage-drop' && s.stageId && !s.wayBack)
+      .filter((s, idx) => s.type === 'stage-drop' && s.stageId && (turnaroundIndex === -1 || idx < turnaroundIndex))
       .map((s) => s.stageId!)
   );
 
@@ -88,16 +91,21 @@ export function calculateDive(
   const results: SectionResult[] = [];
   const pendingDropInserts: { afterSectionId: string; stageId: string }[] = [];
 
-  for (const section of sections) {
+  for (let si = 0; si < sections.length; si++) {
+    const section = sections[si];
+    const isWayBack = turnaroundIndex !== -1 && si > turnaroundIndex;
     let time: number;
     let depth: number;
 
-    if (section.type === 'stage-drop') {
+    if (section.type === 'turnaround') {
+      time = 0;
+      depth = currentDepth;
+    } else if (section.type === 'stage-drop') {
       time = standingData.stageStandingTime ?? 2;
       depth = currentDepth;
       const stage = stageStates.find((s) => s.id === section.stageId);
       if (stage) {
-        if (section.wayBack) {
+        if (isWayBack) {
           // Pickup: re-activate a dropped stage and breathe remaining gas
           if (stage.dropped) {
             stage.dropped = false;
@@ -214,7 +222,7 @@ export function calculateDive(
     const remainingBackGasBar = bottomGasVolume > 0
       ? remainingBackGasLiters / bottomGasVolume
       : 0;
-    const turnWarning = !section.wayBack && remainingBackGasBar < turnPressureBar && turnPressureBar > 0;
+    const turnWarning = !isWayBack && remainingBackGasBar < turnPressureBar && turnPressureBar > 0;
 
     results.push({
       sectionId: section.id,

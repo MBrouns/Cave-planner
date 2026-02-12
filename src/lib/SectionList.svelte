@@ -225,16 +225,26 @@
     updateSection(section.id, 'distance', maxDist);
   }
 
+  function isAfterTurnaround(index: number): boolean {
+    const turnaroundIndex = sections.findIndex(s => s.type === 'turnaround');
+    return turnaroundIndex !== -1 && index > turnaroundIndex;
+  }
+
   function addReturnSections() {
+    const turnaround: Section = {
+      id: generateId(),
+      type: 'turnaround',
+      avgDepth: 0,
+      distance: 0,
+    };
     const reversed = [...sections].reverse().map((s): Section => ({
       id: generateId(),
       type: s.type,
       avgDepth: s.avgDepth,
       distance: s.distance,
       stageId: s.stageId,
-      wayBack: true,
     }));
-    sections = [...sections, ...reversed];
+    sections = [...sections, turnaround, ...reversed];
   }
 
   const sectionTypeEntries = Object.entries(SECTION_TYPE_LABELS) as [SectionType, string][];
@@ -248,6 +258,7 @@
     <button onclick={() => addSection('jump-left')}>+ Jump Left</button>
     <button onclick={() => addSection('jump-right')}>+ Jump Right</button>
     <button onclick={() => addSection('stage-drop')}>+ Stage Pick-up/Drop-off</button>
+    <button onclick={() => addSection('turnaround')}>+ Turnaround</button>
   </div>
 {/snippet}
 
@@ -272,7 +283,7 @@
           class:dragging={dragIndex === i}
           class:drag-over={dragOverIndex === i && dragIndex !== i}
           class:warning-card={result?.turnWarning ?? false}
-          class:wayback-card={section.wayBack ?? false}
+          class:wayback-card={isAfterTurnaround(i)}
           draggable="true"
           role="listitem"
           ondragstart={(e: DragEvent) => handleDragStart(e, i)}
@@ -322,15 +333,6 @@
               <span class="badge turn">TURN</span>
             {/if}
             <div class="header-spacer"></div>
-            <label class="wayback-label">
-              <input
-                type="checkbox"
-                checked={section.wayBack ?? false}
-                onchange={(e: Event) =>
-                  updateSection(section.id, 'wayBack', (e.currentTarget as HTMLInputElement).checked)}
-              />
-              <span class="wayback-text">Way back</span>
-            </label>
             <button class="btn-remove" onclick={() => removeSection(section.id)} title="Remove section">✕</button>
           </div>
 
@@ -598,23 +600,6 @@
 
   .header-spacer {
     flex: 1;
-  }
-
-  .wayback-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .wayback-text {
-    font-size: 0.72rem;
-    color: #888;
-  }
-
-  .wayback-label:has(input:checked) .wayback-text {
-    color: #4fc3f7;
   }
 
   .btn-remove {
