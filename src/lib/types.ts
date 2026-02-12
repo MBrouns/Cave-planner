@@ -31,14 +31,13 @@ export interface StandingData {
   stages: StageEntry[];
 }
 
-export type SectionType = 'swim' | 't-left' | 't-right' | 'jump-left' | 'jump-right' | 'stage-drop';
+export type SectionType = 'swim' | 't-left' | 't-right' | 'jump-left' | 'jump-right' | 'stage-drop' | 'turnaround';
 
 export interface Section {
   id: string;
   type: SectionType;
   avgDepth: number; // meters (used for swim, 0 for nav)
   distance: number; // meters (used for swim, 0 for nav)
-  wayBack?: boolean;
   stageId?: string; // references StageEntry.id for stage-drop/stage-pickup
   note?: string;
 }
@@ -90,6 +89,7 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   'jump-left': 'Jump Left',
   'jump-right': 'Jump Right',
   'stage-drop': 'Stage Pick-up/Drop-off',
+  'turnaround': 'Turnaround',
 };
 
 export function getBottomGasVolume(type: string): number {

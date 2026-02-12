@@ -67,7 +67,6 @@
         type: 'swim',
         avgDepth: target.avgDepth,
         distance: target.distance - insert.splitAtDistance,
-        wayBack: target.wayBack,
       };
       updated[idx] = { ...target, distance: insert.splitAtDistance };
       updated.splice(idx + 1, 0, dropSection, remainder);
