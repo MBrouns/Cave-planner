@@ -145,7 +145,7 @@
     </aside>
 
     <section class="main-content">
-      <SectionList bind:sections={sections} {results} stages={standingData.stages} usableBackGas={calculation.usableBackGas} />
+      <SectionList bind:sections={sections} {results} stages={standingData.stages} usableBackGas={calculation.usableBackGasRounded} />
     </section>
   </div>
 </main>

@@ -74,6 +74,7 @@ export interface DiveCalculation {
   stageReservation: number;
   effectiveBackGas: number;
   usableBackGas: number;
+  usableBackGasRounded: number;
   bottomGasVolume: number;
   pendingDropInserts: { afterSectionId: string; stageId: string; splitAtDistance?: number }[];
 }
