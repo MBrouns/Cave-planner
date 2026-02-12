@@ -89,7 +89,7 @@ export function calculateDive(
   let currentDepth = 0;
 
   const results: SectionResult[] = [];
-  const pendingDropInserts: { afterSectionId: string; stageId: string }[] = [];
+  const pendingDropInserts: { afterSectionId: string; stageId: string; splitAtDistance?: number }[] = [];
 
   for (let si = 0; si < sections.length; si++) {
     const section = sections[si];
