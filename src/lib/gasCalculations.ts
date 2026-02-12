@@ -47,7 +47,8 @@ export function calculateDive(
   }
 
   const effectiveBackGas = totalBackGas - stageReservation;
-  const usableBackGas = effectiveBackGas / 3;
+  const conservatismLiters = (standingData.conservatism ?? 0) * bottomGasVolume;
+  const usableBackGas = effectiveBackGas / 3 - conservatismLiters;
 
   // Rounded bar values used for turn warning comparison
   const turnPressureBar = bottomGasVolume > 0

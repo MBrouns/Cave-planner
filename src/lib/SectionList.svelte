@@ -219,6 +219,7 @@
             <tr
               class:drag-over={dragOverIndex === i && dragIndex !== i}
               class:warning-row={result?.turnWarning ?? false}
+              class:wayback-row={section.wayBack ?? false}
               draggable="true"
               ondragstart={(e: DragEvent) => handleDragStart(e, i)}
               ondragover={(e: DragEvent) => handleDragOver(e, i)}
@@ -384,7 +385,32 @@
             </tr>
           {/each}
         </tbody>
+        {#if results.length > 0}
+          {@const last = results[results.length - 1]}
+          <tfoot>
+            <tr class="totals-row">
+              <td colspan="7"></td>
+              <td class="col-run-time" data-label="Total Run Time">
+                <span class="totals-label">Total</span>
+                {formatTime(last.runningTime)}
+              </td>
+              <td class="col-avg-depth" data-label="Avg Depth">
+                {formatNum(last.runningAvgDepth, 1)}m
+              </td>
+              <td colspan="5"></td>
+            </tr>
+          </tfoot>
+        {/if}
       </table>
+    </div>
+
+    <div class="add-buttons add-buttons-bottom">
+      <button onclick={() => addSection('swim')}>+ Swim</button>
+      <button onclick={() => addSection('t-left')}>+ T Left</button>
+      <button onclick={() => addSection('t-right')}>+ T Right</button>
+      <button onclick={() => addSection('jump-left')}>+ Jump Left</button>
+      <button onclick={() => addSection('jump-right')}>+ Jump Right</button>
+      <button onclick={() => addSection('stage-drop')}>+ Stage Pick-up/Drop-off</button>
     </div>
 
     <button class="btn-return" onclick={addReturnSections}>
@@ -467,6 +493,33 @@
 
   tbody tr.warning-row {
     background: rgba(255, 183, 77, 0.08);
+  }
+
+  tbody tr.wayback-row {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  tbody tr.wayback-row.warning-row {
+    background: rgba(255, 183, 77, 0.08);
+  }
+
+  .totals-row {
+    border-top: 2px solid #333;
+  }
+
+  .totals-row td {
+    padding-top: 0.6rem;
+    font-weight: 600;
+    color: #4fc3f7;
+    font-size: 0.82rem;
+  }
+
+  .totals-label {
+    color: #888;
+    font-weight: 500;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    margin-right: 0.4rem;
   }
 
   td {

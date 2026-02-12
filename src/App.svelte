@@ -16,6 +16,7 @@
     swimSpeed: 15,
     bottomGasType: '2x80',
     bottomGasFillPressure: 220,
+    conservatism: 0,
     stages: [],
   });
 
@@ -119,6 +120,12 @@
             <span class="summary-label">Effective Back Gas</span>
             <span class="summary-value">{formatNum(calculation.effectiveBackGas, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? calculation.effectiveBackGas / calculation.bottomGasVolume : 0, 0)} bar</span>
           </div>
+          {#if (standingData.conservatism ?? 0) > 0}
+            <div class="summary-item">
+              <span class="summary-label">Conservatism</span>
+              <span class="summary-value warn">&minus;{formatNum(standingData.conservatism * calculation.bottomGasVolume, 0)} L / {formatNum(standingData.conservatism, 0)} bar</span>
+            </div>
+          {/if}
           <div class="summary-item">
             <span class="summary-label">Usable (1/3 rule)</span>
             <span class="summary-value highlight">{formatNum(calculation.usableBackGas, 0)} L / {formatNum(calculation.bottomGasVolume > 0 ? floorTo10(calculation.usableBackGas / calculation.bottomGasVolume) : 0, 0)} bar</span>
