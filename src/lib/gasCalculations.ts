@@ -130,6 +130,8 @@ export function calculateDive(
 
     let remaining = gasNeeded;
     const droppedThisSection: string[] = [];
+    const breathedStageIds: string[] = [];
+    let breathedBackGas = false;
 
     // Stages skipped this section (at drop pressure, deferred to explicit stage-drop)
     const skippedStageIds = new Set<string>();
@@ -169,10 +171,12 @@ export function calculateDive(
       if (remaining <= availableFromStage) {
         activeStage.currentPressure -= remaining / activeStage.volume;
         remaining = 0;
+        if (!breathedStageIds.includes(activeStage.id)) breathedStageIds.push(activeStage.id);
       } else {
         // Exhaust this stage to its drop pressure
         remaining -= availableFromStage;
         activeStage.currentPressure = activeStage.dropPressure;
+        if (availableFromStage > 0 && !breathedStageIds.includes(activeStage.id)) breathedStageIds.push(activeStage.id);
 
         if (explicitDropStageIds.has(activeStage.id)) {
           // Defer the actual drop to the explicit stage-drop section
@@ -197,6 +201,7 @@ export function calculateDive(
     if (remaining > 0) {
       remainingBackGasLiters -= remaining;
       backGasUsedTotal += remaining;
+      breathedBackGas = true;
       remaining = 0;
     }
 
@@ -224,6 +229,8 @@ export function calculateDive(
       backGasUsedTotal,
       effectiveBackGas,
       usableBackGas,
+      breathedStageIds,
+      breathedBackGas,
     });
   }
 
