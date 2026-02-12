@@ -144,6 +144,42 @@
     return type === 'swim';
   }
 
+  function getBackGasUsed(sectionIndex: number): number {
+    if (sectionIndex === 0) {
+      // First section - use the initial back gas minus remaining
+      const result = results[0];
+      if (!result) return 0;
+      // We don't have initial back gas here, so we can only show what was consumed if available
+      // For first section, return 0 as we don't have a previous reference
+      return 0;
+    }
+    const prevResult = results[sectionIndex - 1];
+    const currentResult = results[sectionIndex];
+    if (!prevResult || !currentResult) return 0;
+    return prevResult.remainingBackGasBar - currentResult.remainingBackGasBar;
+  }
+
+  function getStageGasUsed(sectionIndex: number, stageId: string): number {
+    if (sectionIndex === 0) {
+      // First section - calculate from fill pressure
+      const result = results[0];
+      if (!result) return 0;
+      const stageState = result.stageStates.find(s => s.id === stageId);
+      if (!stageState) return 0;
+      // Find the stage entry to get fill pressure
+      const stageEntry = stages.find(s => s.id === stageId);
+      if (!stageEntry) return 0;
+      return stageEntry.fillPressure - stageState.currentPressure;
+    }
+    const prevResult = results[sectionIndex - 1];
+    const currentResult = results[sectionIndex];
+    if (!prevResult || !currentResult) return 0;
+    const prevStage = prevResult.stageStates.find(s => s.id === stageId);
+    const currentStage = currentResult.stageStates.find(s => s.id === stageId);
+    if (!prevStage || !currentStage) return 0;
+    return prevStage.currentPressure - currentStage.currentPressure;
+  }
+
   function fixDistance(sectionIndex: number) {
     const section = sections[sectionIndex];
     if (section.type !== 'swim' || section.distance === 0) return;
@@ -325,8 +361,12 @@
               </td>
               <td class="col-backgas" data-label="Back Gas">
                 {#if result}
+                  {@const backGasUsed = getBackGasUsed(i)}
                   {#if result.turnWarning}
                     <span class="over-turn">&#9888; {formatNum(result.remainingBackGasBar, 0)} bar</span>
+                    {#if backGasUsed > 0}
+                      <span class="gas-used">(-{formatNum(backGasUsed, 0)} bar)</span>
+                    {/if}
                     <span class="sub over-turn">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
                     {#if isSwim(section.type)}
                       <button class="btn-fix" onclick={() => fixDistance(i)}>Fix</button>
@@ -335,6 +375,9 @@
                     <span class:low-gas={result.remainingBackGasBar < 50}>
                       {formatNum(result.remainingBackGasBar, 0)} bar
                     </span>
+                    {#if backGasUsed > 0}
+                      <span class="gas-used">(-{formatNum(backGasUsed, 0)} bar)</span>
+                    {/if}
                     <span class="sub">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
                   {/if}
                 {/if}
@@ -342,8 +385,12 @@
               <td class="col-stages" data-label="Stages">
                 {#if result}
                   {#each activeStages(result.stageStates) as st}
+                    {@const stageUsed = getStageGasUsed(i, st.id)}
                     <span class="stage-pill">
                       {stageName(st)}: {formatNum(st.currentPressure, 0)} bar
+                      {#if stageUsed > 0}
+                        <span class="gas-used">(-{formatNum(stageUsed, 0)} bar)</span>
+                      {/if}
                     </span>
                   {/each}
                   {#if activeStages(result.stageStates).length === 0}
@@ -622,6 +669,13 @@
   .low-gas { color: #e57373; font-weight: 600; }
 
   .over-turn { color: #f44336; font-weight: 600; }
+
+  .gas-used {
+    color: #888;
+    font-size: 0.72rem;
+    margin-left: 0.25rem;
+    font-weight: 400;
+  }
 
   .btn-fix {
     display: inline-block;
