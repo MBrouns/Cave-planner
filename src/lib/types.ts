@@ -87,7 +87,7 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   't-right': 'T Right',
   'jump-left': 'Jump Left',
   'jump-right': 'Jump Right',
-  'stage-drop': 'Stage',
+  'stage-drop': 'Stage Pick-up/Drop-off',
 };
 
 export function getBottomGasVolume(type: string): number {

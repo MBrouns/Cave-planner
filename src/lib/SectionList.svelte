@@ -185,7 +185,7 @@
     <button onclick={() => addSection('t-right')}>+ T Right</button>
     <button onclick={() => addSection('jump-left')}>+ Jump Left</button>
     <button onclick={() => addSection('jump-right')}>+ Jump Right</button>
-    <button onclick={() => addSection('stage-drop')}>+ Stage</button>
+    <button onclick={() => addSection('stage-drop')}>+ Stage Pick-up/Drop-off</button>
     {#if sections.length > 0}
       <button class="btn-clear" onclick={clearAll}>Clear All</button>
     {/if}
