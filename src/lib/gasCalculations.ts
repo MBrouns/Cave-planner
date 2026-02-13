@@ -355,26 +355,36 @@ export function calculateDive(
   }
 
   // ── Third pass: compute exit information (distance, time, gas from exit) ──
-  let cumulativeDistance = 0;
-  let cumulativeTime = 0;
-  let cumulativeGas = 0;
+  // Process sections in forward order, tracking how far from exit you are
+  let currentDistanceFromExit = 0;
+  let currentTimeFromExit = 0;
+  let currentGasFromExit = 0;
 
-  // Process sections in reverse order (from end to start)
-  for (let si = sections.length - 1; si >= 0; si--) {
+  for (let si = 0; si < sections.length; si++) {
     const section = sections[si];
     const result = results[si];
 
-    // Set the exit info for this section (accumulated values from sections after it)
-    result.distanceFromExit = cumulativeDistance;
-    result.timeFromExit = cumulativeTime;
-    result.freeLitersFromExit = cumulativeGas;
-
-    // Add this section's values to the cumulative totals
-    if (section.type === 'swim') {
-      cumulativeDistance += section.distance;
+    // Update cumulative values based on direction
+    if (result.isWayBack) {
+      // Swimming back: decrease distance from exit
+      if (section.type === 'swim') {
+        currentDistanceFromExit -= section.distance;
+      }
+      currentTimeFromExit -= result.time;
+      currentGasFromExit -= result.gasConsumed;
+    } else {
+      // Swimming in: increase distance from exit
+      if (section.type === 'swim') {
+        currentDistanceFromExit += section.distance;
+      }
+      currentTimeFromExit += result.time;
+      currentGasFromExit += result.gasConsumed;
     }
-    cumulativeTime += result.time;
-    cumulativeGas += result.gasConsumed;
+
+    // Set the exit info for this section (at the end of the section)
+    result.distanceFromExit = Math.max(0, currentDistanceFromExit);
+    result.timeFromExit = Math.max(0, currentTimeFromExit);
+    result.freeLitersFromExit = Math.max(0, currentGasFromExit);
   }
 
   return {
