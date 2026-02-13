@@ -55,12 +55,13 @@ export interface StageState {
 export interface RecalculationResult {
   possible: boolean;
   scenario: 'kill-stage' | 'backgas-reentry';
-  availableGasLiters: number;   // free liters available for re-entry
-  availableGasBar: number;      // bar equivalent
+  availableGasLiters: number;   // free liters available for re-entry (rounded)
+  availableGasBar: number;      // bar equivalent (rounded down to 10)
   gasSourceLabel: string;       // e.g. "S1 Alu80 (11L)" or "Back Gas"
   gasSourceVolume: number;      // tank internal volume (for context)
   backGasToExitLiters: number;  // back gas needed to exit (informational)
   backGasToExitBar: number;
+  recalcTurnPressureBar: number; // back gas turn pressure for re-entry sections
   // Scenario 1 (kill-stage) extras:
   stageRemainingLiters?: number;
   stageRemainingBar?: number;
