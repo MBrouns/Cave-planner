@@ -266,6 +266,9 @@ export function calculateDive(
       breathedStageIds,
       breathedBackGas,
       isWayBack: sectionIsWayBack,
+      distanceFromExit: 0,
+      timeFromExit: 0,
+      freeLitersFromExit: 0,
     });
   }
 
@@ -401,16 +404,23 @@ export function calculateDive(
 
   // ── Third pass: compute exit information (distance, time, gas from exit) ──
   // Process sections in forward order, tracking how far from exit you are
+  // Track direction separately for exit calculations - only turnarounds change it
   let currentDistanceFromExit = 0;
   let currentTimeFromExit = 0;
   let currentGasFromExit = 0;
+  let exitDirectionIsWayBack = false;
 
   for (let si = 0; si < sections.length; si++) {
     const section = sections[si];
     const result = results[si];
 
-    // Update cumulative values based on direction
-    if (result.isWayBack) {
+    // Update exit direction only on turnarounds, not recalculations
+    if (section.type === 'turnaround') {
+      exitDirectionIsWayBack = !exitDirectionIsWayBack;
+    }
+
+    // Update cumulative values based on exit direction
+    if (exitDirectionIsWayBack) {
       // Swimming back: decrease distance from exit
       if (section.type === 'swim') {
         currentDistanceFromExit -= section.distance;
