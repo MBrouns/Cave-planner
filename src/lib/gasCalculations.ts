@@ -269,10 +269,43 @@ export function calculateDive(
     });
   }
 
-  // ── Second pass: compute recalculation results and fix turn warnings ──
-  const totalBackGasUsedAtEnd = results.length > 0
-    ? results[results.length - 1].backGasUsedTotal
-    : 0;
+  // ── Second pass: compute exit information (distance, time, gas from exit) ──
+  // Process sections in forward order, tracking how far from exit you are.
+  // This must run before the recalculation pass so freeLitersFromExit is available.
+  {
+    let currentDistanceFromExit = 0;
+    let currentTimeFromExit = 0;
+    let currentGasFromExit = 0;
+
+    for (let si = 0; si < sections.length; si++) {
+      const section = sections[si];
+      const result = results[si];
+
+      // Update cumulative values based on direction
+      if (result.isWayBack) {
+        // Swimming back: decrease distance from exit
+        if (section.type === 'swim') {
+          currentDistanceFromExit -= section.distance;
+        }
+        currentTimeFromExit -= result.time;
+        currentGasFromExit -= result.gasConsumed;
+      } else {
+        // Swimming in: increase distance from exit
+        if (section.type === 'swim') {
+          currentDistanceFromExit += section.distance;
+        }
+        currentTimeFromExit += result.time;
+        currentGasFromExit += result.gasConsumed;
+      }
+
+      // Set the exit info for this section (at the end of the section)
+      result.distanceFromExit = Math.max(0, currentDistanceFromExit);
+      result.timeFromExit = Math.max(0, currentTimeFromExit);
+      result.freeLitersFromExit = Math.max(0, currentGasFromExit);
+    }
+  }
+
+  // ── Third pass: compute recalculation results and fix turn warnings ──
 
   // Track the active recalc turn pressure for post-recalculation "way in" sections.
   // Set when a recalculation is encountered, cleared when we return to way-back.
@@ -283,7 +316,9 @@ export function calculateDive(
     const result = results[si];
 
     if (section.type === 'recalculation') {
-      const backGasToExit = totalBackGasUsedAtEnd - result.backGasUsedTotal;
+      // Use direction-aware freeLitersFromExit which correctly accounts for
+      // turnarounds and doesn't include gas consumed in side-passage re-entries.
+      const backGasToExit = result.freeLitersFromExit;
       const backGasToExitBar = bottomGasVolume > 0 ? backGasToExit / bottomGasVolume : 0;
 
       // Find the first active (non-dropped) stage with gas remaining
@@ -397,39 +432,6 @@ export function calculateDive(
         activeRecalcTurnPressure = null;
       }
     }
-  }
-
-  // ── Third pass: compute exit information (distance, time, gas from exit) ──
-  // Process sections in forward order, tracking how far from exit you are
-  let currentDistanceFromExit = 0;
-  let currentTimeFromExit = 0;
-  let currentGasFromExit = 0;
-
-  for (let si = 0; si < sections.length; si++) {
-    const section = sections[si];
-    const result = results[si];
-
-    // Update cumulative values based on direction
-    if (result.isWayBack) {
-      // Swimming back: decrease distance from exit
-      if (section.type === 'swim') {
-        currentDistanceFromExit -= section.distance;
-      }
-      currentTimeFromExit -= result.time;
-      currentGasFromExit -= result.gasConsumed;
-    } else {
-      // Swimming in: increase distance from exit
-      if (section.type === 'swim') {
-        currentDistanceFromExit += section.distance;
-      }
-      currentTimeFromExit += result.time;
-      currentGasFromExit += result.gasConsumed;
-    }
-
-    // Set the exit info for this section (at the end of the section)
-    result.distanceFromExit = Math.max(0, currentDistanceFromExit);
-    result.timeFromExit = Math.max(0, currentTimeFromExit);
-    result.freeLitersFromExit = Math.max(0, currentGasFromExit);
   }
 
   return {
