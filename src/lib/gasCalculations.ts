@@ -354,6 +354,29 @@ export function calculateDive(
     }
   }
 
+  // ── Third pass: compute exit information (distance, time, gas from exit) ──
+  let cumulativeDistance = 0;
+  let cumulativeTime = 0;
+  let cumulativeGas = 0;
+
+  // Process sections in reverse order (from end to start)
+  for (let si = sections.length - 1; si >= 0; si--) {
+    const section = sections[si];
+    const result = results[si];
+
+    // Set the exit info for this section (accumulated values from sections after it)
+    result.distanceFromExit = cumulativeDistance;
+    result.timeFromExit = cumulativeTime;
+    result.freeLitersFromExit = cumulativeGas;
+
+    // Add this section's values to the cumulative totals
+    if (section.type === 'swim') {
+      cumulativeDistance += section.distance;
+    }
+    cumulativeTime += result.time;
+    cumulativeGas += result.gasConsumed;
+  }
+
   return {
     sections: results,
     totalBackGas,

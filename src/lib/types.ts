@@ -87,6 +87,9 @@ export interface SectionResult {
   breathedBackGas: boolean; // whether back gas was consumed this section
   isWayBack: boolean; // direction at this section
   recalculation?: RecalculationResult; // only set for recalculation sections
+  distanceFromExit: number; // meters from the exit
+  timeFromExit: number; // minutes from the exit
+  freeLitersFromExit: number; // free liters needed from the exit
 }
 
 export interface DiveCalculation {
