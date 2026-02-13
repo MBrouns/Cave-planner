@@ -269,88 +269,133 @@ export function calculateDive(
     });
   }
 
-  // ── Second pass: compute recalculation results ──
+  // ── Second pass: compute recalculation results and fix turn warnings ──
   const totalBackGasUsedAtEnd = results.length > 0
     ? results[results.length - 1].backGasUsedTotal
     : 0;
 
+  // Track the active recalc turn pressure for post-recalculation "way in" sections.
+  // Set when a recalculation is encountered, cleared when we return to way-back.
+  let activeRecalcTurnPressure: number | null = null;
+
   for (let si = 0; si < sections.length; si++) {
-    if (sections[si].type !== 'recalculation') continue;
-
+    const section = sections[si];
     const result = results[si];
-    const backGasToExit = totalBackGasUsedAtEnd - result.backGasUsedTotal;
-    const backGasToExitBar = bottomGasVolume > 0 ? backGasToExit / bottomGasVolume : 0;
 
-    // Find the first active (non-dropped) stage with gas remaining
-    const activeStage = result.stageStates.find(
-      (s) => !s.dropped && s.currentPressure > 0
-    );
-    // Find dropped stages that still have gas (not yet picked up)
-    const droppedStagesWithGas = result.stageStates.filter(
-      (s) => s.dropped && s.currentPressure > 0
-    );
+    if (section.type === 'recalculation') {
+      const backGasToExit = totalBackGasUsedAtEnd - result.backGasUsedTotal;
+      const backGasToExitBar = bottomGasVolume > 0 ? backGasToExit / bottomGasVolume : 0;
 
-    if (activeStage) {
-      // SCENARIO 1: Kill the stage
-      // Condition: backGasToExit + stageRemaining ≤ remainingBackGas / 2
-      const stageRemaining = activeStage.currentPressure * activeStage.volume;
-      const possible =
-        (backGasToExit + stageRemaining) <= (result.remainingBackGasLiters / 2);
-
-      const tankLabel = STAGE_TANK_TYPES.find(
-        (t) => t.name === activeStage.tankType
-      )?.label ?? activeStage.tankType;
-
-      result.recalculation = {
-        possible,
-        scenario: 'kill-stage',
-        availableGasLiters: stageRemaining,
-        availableGasBar: activeStage.currentPressure,
-        gasSourceLabel: tankLabel,
-        gasSourceVolume: activeStage.volume,
-        backGasToExitLiters: backGasToExit,
-        backGasToExitBar,
-        stageRemainingLiters: stageRemaining,
-        stageRemainingBar: activeStage.currentPressure,
-      };
-    } else if (droppedStagesWithGas.length > 0) {
-      // SCENARIO 2: Back gas re-entry
-      // available = (remainingBackGas - stageReservation - 2 × backGasToExit) / 3
-      const actualStageReservation = droppedStagesWithGas.reduce(
-        (sum, s) => sum + s.currentPressure * s.volume,
-        0
+      // Find the first active (non-dropped) stage with gas remaining
+      const activeStage = result.stageStates.find(
+        (s) => !s.dropped && s.currentPressure > 0
       );
-      const available =
-        (result.remainingBackGasLiters - actualStageReservation - 2 * backGasToExit) / 3;
+      // Find dropped stages that still have gas (not yet picked up)
+      const droppedStagesWithGas = result.stageStates.filter(
+        (s) => s.dropped && s.currentPressure > 0
+      );
 
-      result.recalculation = {
-        possible: available > 0,
-        scenario: 'backgas-reentry',
-        availableGasLiters: Math.max(0, available),
-        availableGasBar:
-          bottomGasVolume > 0 ? Math.max(0, available) / bottomGasVolume : 0,
-        gasSourceLabel: 'Back Gas',
-        gasSourceVolume: bottomGasVolume,
-        backGasToExitLiters: backGasToExit,
-        backGasToExitBar,
-        stageReservationLiters: actualStageReservation,
-      };
-    } else {
-      // No stages at all — back gas re-entry without stage reservation
-      const available =
-        (result.remainingBackGasLiters - 2 * backGasToExit) / 3;
+      if (activeStage) {
+        // SCENARIO 1: Kill the stage
+        // Condition: backGasToExit + stageRemaining ≤ remainingBackGas / 2
+        const stageRemaining = activeStage.currentPressure * activeStage.volume;
+        const possible =
+          (backGasToExit + stageRemaining) <= (result.remainingBackGasLiters / 2);
 
-      result.recalculation = {
-        possible: available > 0,
-        scenario: 'backgas-reentry',
-        availableGasLiters: Math.max(0, available),
-        availableGasBar:
-          bottomGasVolume > 0 ? Math.max(0, available) / bottomGasVolume : 0,
-        gasSourceLabel: 'Back Gas',
-        gasSourceVolume: bottomGasVolume,
-        backGasToExitLiters: backGasToExit,
-        backGasToExitBar,
-      };
+        const tankLabel = STAGE_TANK_TYPES.find(
+          (t) => t.name === activeStage.tankType
+        )?.label ?? activeStage.tankType;
+
+        const roundedBar = Math.floor(activeStage.currentPressure / 10) * 10;
+        const roundedLiters = roundedBar * activeStage.volume;
+        // Back gas isn't consumed during kill-stage re-entry (stage covers it),
+        // so the turn pressure stays at the current back gas level.
+        const recalcTurn = Math.ceil(result.remainingBackGasBar / 10) * 10;
+
+        result.recalculation = {
+          possible,
+          scenario: 'kill-stage',
+          availableGasLiters: roundedLiters,
+          availableGasBar: roundedBar,
+          gasSourceLabel: tankLabel,
+          gasSourceVolume: activeStage.volume,
+          backGasToExitLiters: backGasToExit,
+          backGasToExitBar,
+          recalcTurnPressureBar: recalcTurn,
+          stageRemainingLiters: roundedLiters,
+          stageRemainingBar: roundedBar,
+        };
+      } else if (droppedStagesWithGas.length > 0) {
+        // SCENARIO 2: Back gas re-entry
+        // available = (remainingBackGas - stageReservation - 2 × backGasToExit) / 3
+        const actualStageReservation = droppedStagesWithGas.reduce(
+          (sum, s) => sum + s.currentPressure * s.volume,
+          0
+        );
+        const available =
+          (result.remainingBackGasLiters - actualStageReservation - 2 * backGasToExit) / 3;
+
+        const rawBar = bottomGasVolume > 0 ? Math.max(0, available) / bottomGasVolume : 0;
+        const roundedBar = Math.floor(rawBar / 10) * 10;
+        const roundedLiters = roundedBar * bottomGasVolume;
+        const recalcTurn = Math.ceil(
+          (result.remainingBackGasBar - roundedBar) / 10
+        ) * 10;
+
+        result.recalculation = {
+          possible: roundedBar > 0,
+          scenario: 'backgas-reentry',
+          availableGasLiters: roundedLiters,
+          availableGasBar: roundedBar,
+          gasSourceLabel: 'Back Gas',
+          gasSourceVolume: bottomGasVolume,
+          backGasToExitLiters: backGasToExit,
+          backGasToExitBar,
+          recalcTurnPressureBar: recalcTurn,
+          stageReservationLiters: actualStageReservation,
+        };
+      } else {
+        // No stages at all — back gas re-entry without stage reservation
+        const available =
+          (result.remainingBackGasLiters - 2 * backGasToExit) / 3;
+
+        const rawBar = bottomGasVolume > 0 ? Math.max(0, available) / bottomGasVolume : 0;
+        const roundedBar = Math.floor(rawBar / 10) * 10;
+        const roundedLiters = roundedBar * bottomGasVolume;
+        const recalcTurn = Math.ceil(
+          (result.remainingBackGasBar - roundedBar) / 10
+        ) * 10;
+
+        result.recalculation = {
+          possible: roundedBar > 0,
+          scenario: 'backgas-reentry',
+          availableGasLiters: roundedLiters,
+          availableGasBar: roundedBar,
+          gasSourceLabel: 'Back Gas',
+          gasSourceVolume: bottomGasVolume,
+          backGasToExitLiters: backGasToExit,
+          backGasToExitBar,
+          recalcTurnPressureBar: recalcTurn,
+        };
+      }
+
+      activeRecalcTurnPressure = result.recalculation.possible
+        ? result.recalculation.recalcTurnPressureBar
+        : result.remainingBackGasBar;
+      continue;
+    }
+
+    // Fix turn warnings for "way in" sections after a recalculation
+    if (activeRecalcTurnPressure !== null) {
+      if (!result.isWayBack) {
+        // Way in after recalc — use recalc turn pressure instead of original
+        result.turnWarning =
+          result.remainingBackGasBar < activeRecalcTurnPressure &&
+          activeRecalcTurnPressure > 0;
+      } else {
+        // Way back — past the side-passage turnaround, clear recalc state
+        activeRecalcTurnPressure = null;
+      }
     }
   }
 
