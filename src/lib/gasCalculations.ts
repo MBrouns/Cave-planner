@@ -5,7 +5,7 @@ import type {
   StageState,
   DiveCalculation,
 } from './types';
-import { getBottomGasVolume, getStageVolume } from './types';
+import { getBottomGasVolume, getStageVolume, STAGE_TANK_TYPES } from './types';
 
 /**
  * Calculate the full dive plan from standing data and sections.
@@ -28,6 +28,13 @@ import { getBottomGasVolume, getStageVolume } from './types';
  *
  * Stage-pickup sections: reverse of stage-drop, used on the way back.
  *   Re-activates a dropped stage and breathes remaining gas (down to 0).
+ *
+ * Recalculation sections: placed on the way back, they compute whether
+ *   the diver can re-enter the cave on a different path. Two scenarios:
+ *   1. Kill-stage: empty a picked-up stage going back in, exit on back gas.
+ *   2. Back-gas re-entry: use a portion of back gas for re-entry when
+ *      stages haven't been picked up yet.
+ *   Sections after a recalculation are "way in" until the next turnaround.
  */
 export function calculateDive(
   standingData: StandingData,
@@ -58,15 +65,20 @@ export function calculateDive(
     ? Math.floor(usableBackGas / bottomGasVolume / 10) * 10 * bottomGasVolume
     : usableBackGas;
 
-  // Determine the index of the first turnaround section (if any)
-  const turnaroundIndex = sections.findIndex((s) => s.type === 'turnaround');
-
-  // Build set of stage IDs that have explicit stage-drop sections (not pickups)
-  const explicitDropStageIds = new Set(
-    sections
-      .filter((s, idx) => s.type === 'stage-drop' && s.stageId && (turnaroundIndex === -1 || idx < turnaroundIndex))
-      .map((s) => s.stageId!)
-  );
+  // Build set of stage IDs that have explicit stage-drop sections while going in.
+  // Direction tracks recalculation boundaries: after a recalculation, sections
+  // are "way in" again until the next turnaround.
+  const explicitDropStageIds = new Set<string>();
+  {
+    let wb = false;
+    for (const s of sections) {
+      if (s.type === 'turnaround') wb = !wb;
+      else if (s.type === 'recalculation') wb = false;
+      if (s.type === 'stage-drop' && s.stageId && !wb) {
+        explicitDropStageIds.add(s.stageId);
+      }
+    }
+  }
 
   // Mutable stage tracking
   const stageStates: StageState[] = standingData.stages.map((s) => {
@@ -91,13 +103,25 @@ export function calculateDive(
   const results: SectionResult[] = [];
   const pendingDropInserts: { afterSectionId: string; stageId: string; splitAtDistance?: number }[] = [];
 
+  // Direction state: tracks whether we're on the way back.
+  // Toggled by turnaround, reset to false (way in) by recalculation.
+  let isWayBack = false;
+
   for (let si = 0; si < sections.length; si++) {
     const section = sections[si];
-    const isWayBack = turnaroundIndex !== -1 && si > turnaroundIndex;
+    const sectionIsWayBack = isWayBack;
+
+    // Update direction for NEXT section
+    if (section.type === 'turnaround') {
+      isWayBack = !isWayBack;
+    } else if (section.type === 'recalculation') {
+      isWayBack = false;
+    }
+
     let time: number;
     let depth: number;
 
-    if (section.type === 'turnaround') {
+    if (section.type === 'turnaround' || section.type === 'recalculation') {
       time = 0;
       depth = currentDepth;
     } else if (section.type === 'stage-drop') {
@@ -105,7 +129,7 @@ export function calculateDive(
       depth = currentDepth;
       const stage = stageStates.find((s) => s.id === section.stageId);
       if (stage) {
-        if (isWayBack) {
+        if (sectionIsWayBack) {
           // Pickup: re-activate a dropped stage and breathe remaining gas
           if (stage.dropped) {
             stage.dropped = false;
@@ -222,7 +246,7 @@ export function calculateDive(
     const remainingBackGasBar = bottomGasVolume > 0
       ? remainingBackGasLiters / bottomGasVolume
       : 0;
-    const turnWarning = !isWayBack && remainingBackGasBar < turnPressureBar && turnPressureBar > 0;
+    const turnWarning = !sectionIsWayBack && remainingBackGasBar < turnPressureBar && turnPressureBar > 0;
 
     results.push({
       sectionId: section.id,
@@ -241,7 +265,93 @@ export function calculateDive(
       usableBackGas,
       breathedStageIds,
       breathedBackGas,
+      isWayBack: sectionIsWayBack,
     });
+  }
+
+  // ── Second pass: compute recalculation results ──
+  const totalBackGasUsedAtEnd = results.length > 0
+    ? results[results.length - 1].backGasUsedTotal
+    : 0;
+
+  for (let si = 0; si < sections.length; si++) {
+    if (sections[si].type !== 'recalculation') continue;
+
+    const result = results[si];
+    const backGasToExit = totalBackGasUsedAtEnd - result.backGasUsedTotal;
+    const backGasToExitBar = bottomGasVolume > 0 ? backGasToExit / bottomGasVolume : 0;
+
+    // Find the first active (non-dropped) stage with gas remaining
+    const activeStage = result.stageStates.find(
+      (s) => !s.dropped && s.currentPressure > 0
+    );
+    // Find dropped stages that still have gas (not yet picked up)
+    const droppedStagesWithGas = result.stageStates.filter(
+      (s) => s.dropped && s.currentPressure > 0
+    );
+
+    if (activeStage) {
+      // SCENARIO 1: Kill the stage
+      // Condition: backGasToExit + stageRemaining ≤ remainingBackGas / 2
+      const stageRemaining = activeStage.currentPressure * activeStage.volume;
+      const possible =
+        (backGasToExit + stageRemaining) <= (result.remainingBackGasLiters / 2);
+
+      const tankLabel = STAGE_TANK_TYPES.find(
+        (t) => t.name === activeStage.tankType
+      )?.label ?? activeStage.tankType;
+
+      result.recalculation = {
+        possible,
+        scenario: 'kill-stage',
+        availableGasLiters: stageRemaining,
+        availableGasBar: activeStage.currentPressure,
+        gasSourceLabel: tankLabel,
+        gasSourceVolume: activeStage.volume,
+        backGasToExitLiters: backGasToExit,
+        backGasToExitBar,
+        stageRemainingLiters: stageRemaining,
+        stageRemainingBar: activeStage.currentPressure,
+      };
+    } else if (droppedStagesWithGas.length > 0) {
+      // SCENARIO 2: Back gas re-entry
+      // available = (remainingBackGas - stageReservation - 2 × backGasToExit) / 3
+      const actualStageReservation = droppedStagesWithGas.reduce(
+        (sum, s) => sum + s.currentPressure * s.volume,
+        0
+      );
+      const available =
+        (result.remainingBackGasLiters - actualStageReservation - 2 * backGasToExit) / 3;
+
+      result.recalculation = {
+        possible: available > 0,
+        scenario: 'backgas-reentry',
+        availableGasLiters: Math.max(0, available),
+        availableGasBar:
+          bottomGasVolume > 0 ? Math.max(0, available) / bottomGasVolume : 0,
+        gasSourceLabel: 'Back Gas',
+        gasSourceVolume: bottomGasVolume,
+        backGasToExitLiters: backGasToExit,
+        backGasToExitBar,
+        stageReservationLiters: actualStageReservation,
+      };
+    } else {
+      // No stages at all — back gas re-entry without stage reservation
+      const available =
+        (result.remainingBackGasLiters - 2 * backGasToExit) / 3;
+
+      result.recalculation = {
+        possible: available > 0,
+        scenario: 'backgas-reentry',
+        availableGasLiters: Math.max(0, available),
+        availableGasBar:
+          bottomGasVolume > 0 ? Math.max(0, available) / bottomGasVolume : 0,
+        gasSourceLabel: 'Back Gas',
+        gasSourceVolume: bottomGasVolume,
+        backGasToExitLiters: backGasToExit,
+        backGasToExitBar,
+      };
+    }
   }
 
   return {

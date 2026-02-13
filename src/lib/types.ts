@@ -31,7 +31,7 @@ export interface StandingData {
   stages: StageEntry[];
 }
 
-export type SectionType = 'swim' | 't-left' | 't-right' | 'jump-left' | 'jump-right' | 'stage-drop' | 'turnaround';
+export type SectionType = 'swim' | 't-left' | 't-right' | 'jump-left' | 'jump-right' | 'stage-drop' | 'turnaround' | 'recalculation';
 
 export interface Section {
   id: string;
@@ -52,6 +52,22 @@ export interface StageState {
   dropped: boolean;
 }
 
+export interface RecalculationResult {
+  possible: boolean;
+  scenario: 'kill-stage' | 'backgas-reentry';
+  availableGasLiters: number;   // free liters available for re-entry
+  availableGasBar: number;      // bar equivalent
+  gasSourceLabel: string;       // e.g. "S1 Alu80 (11L)" or "Back Gas"
+  gasSourceVolume: number;      // tank internal volume (for context)
+  backGasToExitLiters: number;  // back gas needed to exit (informational)
+  backGasToExitBar: number;
+  // Scenario 1 (kill-stage) extras:
+  stageRemainingLiters?: number;
+  stageRemainingBar?: number;
+  // Scenario 2 (backgas-reentry) extras:
+  stageReservationLiters?: number;
+}
+
 export interface SectionResult {
   sectionId: string;
   time: number; // minutes
@@ -69,6 +85,8 @@ export interface SectionResult {
   usableBackGas: number; // 1/3 of effective
   breathedStageIds: string[]; // stage IDs breathed from this section
   breathedBackGas: boolean; // whether back gas was consumed this section
+  isWayBack: boolean; // direction at this section
+  recalculation?: RecalculationResult; // only set for recalculation sections
 }
 
 export interface DiveCalculation {
@@ -90,6 +108,7 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   'jump-right': 'Jump Right',
   'stage-drop': 'Stage Pick-up/Drop-off',
   'turnaround': 'Turnaround',
+  'recalculation': 'Recalculation',
 };
 
 export function getBottomGasVolume(type: string): number {
