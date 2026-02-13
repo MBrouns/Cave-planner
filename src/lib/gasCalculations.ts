@@ -310,7 +310,8 @@ export function calculateDive(
         const roundedLiters = roundedBar * activeStage.volume;
         // Back gas isn't consumed during kill-stage re-entry (stage covers it),
         // so the turn pressure stays at the current back gas level.
-        const recalcTurn = Math.ceil(result.remainingBackGasBar / 10) * 10;
+        // Floor to avoid false warnings when bar isn't a clean multiple of 10.
+        const recalcTurn = Math.floor(result.remainingBackGasBar / 10) * 10;
 
         result.recalculation = {
           possible,
