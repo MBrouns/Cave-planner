@@ -452,6 +452,18 @@
                   <span class="field-value">{formatNum(result.runningAvgDepth, 1)}m</span>
                 </div>
                 <div class="field">
+                  <span class="field-label">Dist from Exit</span>
+                  <span class="field-value exit-info">{formatNum(result.distanceFromExit, 0)}m</span>
+                </div>
+                <div class="field">
+                  <span class="field-label">Time from Exit</span>
+                  <span class="field-value exit-info">{formatTime(result.timeFromExit)}</span>
+                </div>
+                <div class="field">
+                  <span class="field-label">Gas from Exit</span>
+                  <span class="field-value exit-info">{formatNum(result.freeLitersFromExit, 0)}L</span>
+                </div>
+                <div class="field">
                   <span class="field-label">Back Gas</span>
                   <span class="field-value" class:over-turn={result.turnWarning} class:low-gas={!result.turnWarning && result.remainingBackGasBar < 50}>
                     {#if result.turnWarning}&#9888; {/if}{formatNum(result.remainingBackGasBar, 0)} bar
@@ -751,6 +763,11 @@
 
   .field-value.source {
     color: #81d4fa;
+    font-weight: 500;
+  }
+
+  .field-value.exit-info {
+    color: #a5d6a7;
     font-weight: 500;
   }
 
