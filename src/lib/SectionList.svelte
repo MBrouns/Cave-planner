@@ -225,9 +225,8 @@
     updateSection(section.id, 'distance', maxDist);
   }
 
-  function isAfterTurnaround(index: number): boolean {
-    const turnaroundIndex = sections.findIndex(s => s.type === 'turnaround');
-    return turnaroundIndex !== -1 && index > turnaroundIndex;
+  function isWayBackSection(index: number): boolean {
+    return results[index]?.isWayBack ?? false;
   }
 
   function addReturnSections() {
@@ -237,13 +236,16 @@
       avgDepth: 0,
       distance: 0,
     };
-    const reversed = [...sections].reverse().map((s): Section => ({
-      id: generateId(),
-      type: s.type,
-      avgDepth: s.avgDepth,
-      distance: s.distance,
-      stageId: s.stageId,
-    }));
+    const reversed = [...sections]
+      .filter((s) => s.type !== 'recalculation' && s.type !== 'turnaround')
+      .reverse()
+      .map((s): Section => ({
+        id: generateId(),
+        type: s.type,
+        avgDepth: s.avgDepth,
+        distance: s.distance,
+        stageId: s.stageId,
+      }));
     sections = [...sections, turnaround, ...reversed];
   }
 
@@ -259,6 +261,7 @@
     <button onclick={() => addSection('jump-right')}>+ Jump Right</button>
     <button onclick={() => addSection('stage-drop')}>+ Stage Pick-up/Drop-off</button>
     <button onclick={() => addSection('turnaround')}>+ Turnaround</button>
+    <button onclick={() => addSection('recalculation')}>+ Recalculation</button>
   </div>
 {/snippet}
 
@@ -283,7 +286,7 @@
           class:dragging={dragIndex === i}
           class:drag-over={dragOverIndex === i && dragIndex !== i}
           class:warning-card={result?.turnWarning ?? false}
-          class:wayback-card={isAfterTurnaround(i)}
+          class:wayback-card={isWayBackSection(i)}
           draggable="true"
           role="listitem"
           ondragstart={(e: DragEvent) => handleDragStart(e, i)}
@@ -371,60 +374,114 @@
           <!-- Computed results -->
           {#if result}
             {@const backGasUsed = getBackGasUsed(i)}
-            <div class="card-data">
-              {#if !swim}
-                <div class="field">
-                  <span class="field-label">Depth</span>
-                  <span class="field-value inherited">{formatNum(result.depth, 0)}m</span>
+            {#if section.type === 'recalculation' && result.recalculation}
+              <!-- Recalculation result display -->
+              {@const rc = result.recalculation}
+              <div class="recalc-result" class:recalc-possible={rc.possible} class:recalc-impossible={!rc.possible}>
+                <div class="recalc-header">
+                  {#if rc.scenario === 'kill-stage'}
+                    Kill Stage
+                  {:else}
+                    Back Gas Re-entry
+                  {/if}
+                  {#if rc.possible}
+                    <span class="badge recalc-ok">OK</span>
+                  {:else}
+                    <span class="badge recalc-no">NOT POSSIBLE</span>
+                  {/if}
                 </div>
-              {/if}
-              <div class="field">
-                <span class="field-label">Source</span>
-                <span class="field-value source">{gasSourceLabel(result)}</span>
-              </div>
-              <div class="field">
-                <span class="field-label">Run Time</span>
-                <span class="field-value">
-                  {formatTime(result.runningTime)}
-                  {#if swim}
-                    <span class="sub">(+{formatTime(result.time)})</span>
+                <div class="recalc-details">
+                  <div class="field">
+                    <span class="field-label">Available for re-entry</span>
+                    <span class="field-value" class:recalc-val-ok={rc.possible} class:recalc-val-no={!rc.possible}>
+                      {formatNum(rc.availableGasLiters, 0)}L / {formatNum(rc.availableGasBar, 0)} bar
+                    </span>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Gas Source</span>
+                    <span class="field-value source">{rc.gasSourceLabel}</span>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Back Gas to Exit</span>
+                    <span class="field-value">{formatNum(rc.backGasToExitLiters, 0)}L / {formatNum(rc.backGasToExitBar, 0)} bar</span>
+                  </div>
+                  {#if rc.scenario === 'kill-stage' && rc.stageRemainingLiters != null}
+                    <div class="field">
+                      <span class="field-label">Stage Remaining</span>
+                      <span class="field-value">{formatNum(rc.stageRemainingLiters, 0)}L / {formatNum(rc.stageRemainingBar ?? 0, 0)} bar</span>
+                    </div>
                   {/if}
-                </span>
-              </div>
-              <div class="field">
-                <span class="field-label">Avg Depth</span>
-                <span class="field-value">{formatNum(result.runningAvgDepth, 1)}m</span>
-              </div>
-              <div class="field">
-                <span class="field-label">Back Gas</span>
-                <span class="field-value" class:over-turn={result.turnWarning} class:low-gas={!result.turnWarning && result.remainingBackGasBar < 50}>
-                  {#if result.turnWarning}&#9888; {/if}{formatNum(result.remainingBackGasBar, 0)} bar
-                  {#if backGasUsed > 0}
-                    <span class="gas-used">(-{formatNum(backGasUsed, 0)})</span>
+                  {#if rc.scenario === 'backgas-reentry' && rc.stageReservationLiters != null}
+                    <div class="field">
+                      <span class="field-label">Stage Reservation</span>
+                      <span class="field-value">{formatNum(rc.stageReservationLiters, 0)}L</span>
+                    </div>
                   {/if}
-                  <span class="sub">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
-                  {#if result.turnWarning && swim}
-                    <button class="btn-fix" onclick={() => fixDistance(i)}>Fix</button>
-                  {/if}
-                </span>
+                  <div class="field">
+                    <span class="field-label">Back Gas</span>
+                    <span class="field-value">
+                      {formatNum(result.remainingBackGasBar, 0)} bar
+                      <span class="sub">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
+                    </span>
+                  </div>
+                </div>
               </div>
-              {#if carried.length > 0}
+            {:else}
+              <div class="card-data">
+                {#if !swim}
+                  <div class="field">
+                    <span class="field-label">Depth</span>
+                    <span class="field-value inherited">{formatNum(result.depth, 0)}m</span>
+                  </div>
+                {/if}
                 <div class="field">
-                  <span class="field-label">Stages</span>
+                  <span class="field-label">Source</span>
+                  <span class="field-value source">{gasSourceLabel(result)}</span>
+                </div>
+                <div class="field">
+                  <span class="field-label">Run Time</span>
                   <span class="field-value">
-                    {#each carried as st}
-                      {@const stageUsed = getStageGasUsed(i, st.id)}
-                      <span class="stage-pill">
-                        {stageName(st)}: {formatNum(st.currentPressure, 0)} bar
-                        {#if stageUsed > 0}
-                          <span class="gas-used">(-{formatNum(stageUsed, 0)})</span>
-                        {/if}
-                      </span>
-                    {/each}
+                    {formatTime(result.runningTime)}
+                    {#if swim}
+                      <span class="sub">(+{formatTime(result.time)})</span>
+                    {/if}
                   </span>
                 </div>
-              {/if}
-            </div>
+                <div class="field">
+                  <span class="field-label">Avg Depth</span>
+                  <span class="field-value">{formatNum(result.runningAvgDepth, 1)}m</span>
+                </div>
+                <div class="field">
+                  <span class="field-label">Back Gas</span>
+                  <span class="field-value" class:over-turn={result.turnWarning} class:low-gas={!result.turnWarning && result.remainingBackGasBar < 50}>
+                    {#if result.turnWarning}&#9888; {/if}{formatNum(result.remainingBackGasBar, 0)} bar
+                    {#if backGasUsed > 0}
+                      <span class="gas-used">(-{formatNum(backGasUsed, 0)})</span>
+                    {/if}
+                    <span class="sub">({formatNum(result.remainingBackGasLiters, 0)}L)</span>
+                    {#if result.turnWarning && swim}
+                      <button class="btn-fix" onclick={() => fixDistance(i)}>Fix</button>
+                    {/if}
+                  </span>
+                </div>
+                {#if carried.length > 0}
+                  <div class="field">
+                    <span class="field-label">Stages</span>
+                    <span class="field-value">
+                      {#each carried as st}
+                        {@const stageUsed = getStageGasUsed(i, st.id)}
+                        <span class="stage-pill">
+                          {stageName(st)}: {formatNum(st.currentPressure, 0)} bar
+                          {#if stageUsed > 0}
+                            <span class="gas-used">(-{formatNum(stageUsed, 0)})</span>
+                          {/if}
+                        </span>
+                      {/each}
+                    </span>
+                  </div>
+                {/if}
+              </div>
+            {/if}
           {/if}
 
           <!-- Notes -->
@@ -634,6 +691,18 @@
     border: 1px solid #f44336;
   }
 
+  .badge.recalc-ok {
+    background: rgba(76, 175, 80, 0.2);
+    color: #66bb6a;
+    border: 1px solid #4caf50;
+  }
+
+  .badge.recalc-no {
+    background: rgba(244, 67, 54, 0.2);
+    color: #ef5350;
+    border: 1px solid #f44336;
+  }
+
   /* ── Card inputs (user-editable row) ── */
   .card-inputs {
     display: flex;
@@ -747,6 +816,49 @@
     padding: 0.1rem 0.35rem;
     font-size: 0.72rem;
     white-space: nowrap;
+  }
+
+  /* ── Recalculation result ── */
+  .recalc-result {
+    padding: 0.5rem 0.75rem 0.4rem 1.7rem;
+    border-radius: 4px;
+    margin: 0.25rem 0;
+  }
+
+  .recalc-result.recalc-possible {
+    background: rgba(76, 175, 80, 0.06);
+    border-left: 3px solid #4caf50;
+  }
+
+  .recalc-result.recalc-impossible {
+    background: rgba(244, 67, 54, 0.06);
+    border-left: 3px solid #f44336;
+  }
+
+  .recalc-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .recalc-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem 1.25rem;
+  }
+
+  .recalc-val-ok {
+    color: #66bb6a !important;
+    font-weight: 600;
+  }
+
+  .recalc-val-no {
+    color: #ef5350 !important;
+    font-weight: 600;
   }
 
   /* ── Card footer ── */
