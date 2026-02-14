@@ -165,6 +165,45 @@ describe('computeFixedDistance', () => {
     expect(fixedCalc.sections[0].turnWarning).toBe(false);
   });
 
+  it('should account for stage gas in kill-stage recalculation scenario', () => {
+    // Scenario: swim in with a stage, drop it, turn around, swim back and
+    // pick it up, recalculation (kill-stage), then swim into side passage.
+    // The side-passage swim breathes stage gas first, then back gas. The fix
+    // must include the stage gas as part of the available budget.
+    const standingData = makeStandingData({
+      stages: [{ id: 'stg1', tankType: 'alu80', fillPressure: 200, reserveInBackGas: false }],
+    });
+
+    const sections: Section[] = [
+      { id: 's1', type: 'swim', avgDepth: 10, distance: 100 },
+      { id: 's2', type: 'stage-drop', avgDepth: 0, distance: 0, stageId: 'stg1' },
+      { id: 's3', type: 'turnaround', avgDepth: 0, distance: 0 },
+      { id: 's4', type: 'swim', avgDepth: 10, distance: 100 },
+      { id: 's5', type: 'stage-drop', avgDepth: 0, distance: 0, stageId: 'stg1' },
+      { id: 's6', type: 'recalculation', avgDepth: 0, distance: 0 },
+      { id: 's7', type: 'swim', avgDepth: 10, distance: 500 },
+    ];
+
+    const calc = calculateDive(standingData, sections);
+
+    // Verify kill-stage scenario
+    const recalcResult = calc.sections.find(s => s.sectionId === 's6');
+    expect(recalcResult?.recalculation?.scenario).toBe('kill-stage');
+
+    // The side-passage swim should trigger a turn warning
+    const s7Result = calc.sections.find(s => s.sectionId === 's7');
+    expect(s7Result?.turnWarning).toBe(true);
+
+    const s7Index = sections.findIndex(s => s.id === 's7');
+    const fixed = computeFixedDistance(
+      sections, calc.sections, calc.usableBackGasRounded, calc.bottomGasVolume, s7Index,
+    );
+
+    // Must return a positive distance — not 0
+    expect(fixed).not.toBeNull();
+    expect(fixed).toBeGreaterThan(0);
+  });
+
   it('should return null for non-swim sections', () => {
     const sections: Section[] = [
       { id: 's1', type: 'turnaround', avgDepth: 0, distance: 0 },

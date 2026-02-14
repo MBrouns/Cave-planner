@@ -470,6 +470,10 @@ export function computeFixedDistance(
     : 0;
   const backGasUsedInSection = result.backGasUsedTotal - prevBackGasUsed;
 
+  // If no back gas was consumed in this section, reducing its distance
+  // won't change the back gas situation — nothing to fix.
+  if (backGasUsedInSection <= 0) return null;
+
   // Find the applicable available back gas for this section.
   // After a recalculation, the turn pressure is redefined — use the recalc
   // turn pressure instead of the original usable back gas budget.
@@ -485,10 +489,17 @@ export function computeFixedDistance(
     availableBackGas = usableBackGas - prevBackGasUsed;
   }
 
-  if (availableBackGas <= 0) return 0;
-  if (backGasUsedInSection <= 0) return null;
+  // Total gas budget: stage gas consumed in this section (which doesn't
+  // affect back gas) plus whatever back gas is available before the turn
+  // pressure is hit.  Stages are consumed first, so the stage portion acts
+  // as a "free" budget that doesn't touch back gas.
+  const stageGasInSection = result.gasConsumed - backGasUsedInSection;
+  const totalBudget = stageGasInSection + Math.max(0, availableBackGas);
 
-  return Math.floor(section.distance * availableBackGas / backGasUsedInSection);
+  if (totalBudget <= 0) return 0;
+  if (result.gasConsumed <= 0) return null;
+
+  return Math.floor(section.distance * totalBudget / result.gasConsumed);
 }
 
 /**
