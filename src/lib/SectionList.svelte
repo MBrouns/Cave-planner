@@ -9,12 +9,14 @@
     type StageState,
     type StageEntry,
   } from './types';
+  import { computeFixedDistance } from './gasCalculations';
 
-  let { sections = $bindable(), results, stages, usableBackGas }: {
+  let { sections = $bindable(), results, stages, usableBackGas, bottomGasVolume }: {
     sections: Section[];
     results: SectionResult[];
     stages: StageEntry[];
     usableBackGas: number;
+    bottomGasVolume: number;
   } = $props();
 
   let dragIndex: number | null = $state(null);
@@ -210,18 +212,8 @@
 
   function fixDistance(sectionIndex: number) {
     const section = sections[sectionIndex];
-    if (section.type !== 'swim' || section.distance === 0) return;
-    const result = results[sectionIndex];
-    if (!result) return;
-    const prevBackGasUsed = sectionIndex > 0 ? results[sectionIndex - 1]?.backGasUsedTotal ?? 0 : 0;
-    const backGasUsedInSection = result.backGasUsedTotal - prevBackGasUsed;
-    const availableBackGas = usableBackGas - prevBackGasUsed;
-    if (availableBackGas <= 0) {
-      updateSection(section.id, 'distance', 0);
-      return;
-    }
-    if (backGasUsedInSection <= 0) return;
-    const maxDist = Math.floor(section.distance * availableBackGas / backGasUsedInSection);
+    const maxDist = computeFixedDistance(sections, results, usableBackGas, bottomGasVolume, sectionIndex);
+    if (maxDist === null) return;
     updateSection(section.id, 'distance', maxDist);
   }
 

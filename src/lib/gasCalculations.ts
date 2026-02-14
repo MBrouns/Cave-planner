@@ -4,6 +4,7 @@ import type {
   SectionResult,
   StageState,
   DiveCalculation,
+  RecalculationResult,
 } from './types';
 import { getBottomGasVolume, getStageVolume, STAGE_TANK_TYPES } from './types';
 
@@ -444,4 +445,69 @@ export function calculateDive(
     bottomGasVolume,
     pendingDropInserts,
   };
+}
+
+/**
+ * Compute the maximum swim distance for a section so that the turn warning
+ * is no longer triggered. Returns null if no fix is applicable (section is
+ * not a swim, uses no back gas, etc.), or 0 when no gas is available.
+ */
+export function computeFixedDistance(
+  sections: Section[],
+  results: SectionResult[],
+  usableBackGas: number,
+  bottomGasVolume: number,
+  sectionIndex: number,
+): number | null {
+  const section = sections[sectionIndex];
+  if (section.type !== 'swim' || section.distance === 0) return null;
+
+  const result = results[sectionIndex];
+  if (!result) return null;
+
+  const prevBackGasUsed = sectionIndex > 0
+    ? results[sectionIndex - 1]?.backGasUsedTotal ?? 0
+    : 0;
+  const backGasUsedInSection = result.backGasUsedTotal - prevBackGasUsed;
+
+  // Find the applicable available back gas for this section.
+  // After a recalculation, the turn pressure is redefined — use the recalc
+  // turn pressure instead of the original usable back gas budget.
+  let availableBackGas: number;
+
+  const activeRecalc = findActiveRecalculation(sections, results, sectionIndex);
+  if (activeRecalc) {
+    const prevRemainingLiters = sectionIndex > 0
+      ? results[sectionIndex - 1]?.remainingBackGasLiters ?? 0
+      : 0;
+    availableBackGas = prevRemainingLiters - activeRecalc.recalcTurnPressureBar * bottomGasVolume;
+  } else {
+    availableBackGas = usableBackGas - prevBackGasUsed;
+  }
+
+  if (availableBackGas <= 0) return 0;
+  if (backGasUsedInSection <= 0) return null;
+
+  return Math.floor(section.distance * availableBackGas / backGasUsedInSection);
+}
+
+/**
+ * Walk backwards from sectionIndex to find the most recent recalculation
+ * whose turn pressure applies to this section. Returns null if the section
+ * is not in a post-recalculation "way in" zone.
+ */
+function findActiveRecalculation(
+  sections: Section[],
+  results: SectionResult[],
+  sectionIndex: number,
+): RecalculationResult | null {
+  for (let i = sectionIndex - 1; i >= 0; i--) {
+    if (sections[i].type === 'recalculation') {
+      return results[i]?.recalculation ?? null;
+    }
+    if (results[i]?.isWayBack) {
+      return null;
+    }
+  }
+  return null;
 }
