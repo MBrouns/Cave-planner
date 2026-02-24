@@ -211,6 +211,8 @@
     gap: 1rem;
     position: sticky;
     top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
   }
 
   .main-content {
